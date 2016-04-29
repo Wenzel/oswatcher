@@ -44,7 +44,7 @@ def init_logger():
 
 def main(args):
     init_logger()
-    # connect to VBox
+    # connect to QEMU
     con = libvirt.open('qemu:///session')
     if con == None:
         print('Failed to connect to Hypervisor !')
