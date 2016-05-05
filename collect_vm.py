@@ -58,7 +58,7 @@ def main(args):
     # find cdrom
     cdrom = root.find("./devices/disk[@device='cdrom']")
     # -> source = 'myiso'
-    logging.debug('setting source = {}'.format(MYISO))
+    logging.debug('Setting CDROM source to {}'.format(MYISO))
     try:
         # set
         cdrom.find('source').set('file', MYISO)
@@ -67,6 +67,7 @@ def main(args):
         ET.SubElement(cdrom, 'source', {'file': MYISO})
     # boot from cdrom
     os = root.find('./os')
+    logging.debug('Setting CDROM as main boot device')
     try:
         # set
         os.find('boot').set('dev', 'cdrom')
@@ -75,14 +76,13 @@ def main(args):
         ET.SubElement(os, 'boot', {'dev': 'cdrom'})
 
     # update VM
+    logging.debug('Updating VM definition...')
     with tempfile.NamedTemporaryFile() as tmp:
         new_xml = ET.tostring(root)
         tmp.write(new_xml)
         tmp.flush()
         args = ['define', tmp.name]
         run('virsh', args)
-    # update cdrom source
-    # set as bootable
     # set shared host dir
     # shared_dir = '''    
     # <filesystem type='mount' accessmode='passthrough'>
