@@ -73,7 +73,6 @@ def main(args):
     except:
         # insert
         ET.SubElement(os, 'boot', {'dev': 'cdrom'})
-    print(xml)
 
     # update VM
     with tempfile.NamedTemporaryFile() as tmp:
