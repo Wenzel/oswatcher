@@ -19,6 +19,7 @@ rm -rf "$archiso"
 mkdir -p "$archiso"
 docker run \
     -ti \
+    -u docker \
     --rm \
     --privileged \
     -v "$archiso":/archiso \
