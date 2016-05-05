@@ -18,4 +18,4 @@ docker run \
     --privileged \
     -v "$archiso":/archiso \
     archiso \
-    /bin/bash -c 'cd /archiso/baseline && ./build.sh -v && mv /archiso/baseline/out/* live.iso && chown 1000:1000 -R /archiso/baseline/out'
+    /bin/bash -c 'cd /archiso/baseline && ./build.sh -v && mv /archiso/baseline/out/* /archiso/baseline/out/live.iso && chown 1000:1000 -R /archiso/baseline/out'
