@@ -5,6 +5,6 @@ RUN rankmirrors -n 5 -v /etc/pacman.d/mirrorlist.backup > /etc/pacman.d/mirrorli
 RUN pacman -Syu --noconfirm
 RUN pacman-db-upgrade
 RUN pacman -S --noconfirm archiso
-RUN useradd -ms /bin/bash docker
+# RUN useradd -ms /bin/bash docker
 VOLUME /archiso
 CMD /bin/bash

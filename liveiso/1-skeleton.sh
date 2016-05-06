@@ -19,9 +19,8 @@ rm -rf "$archiso"
 mkdir -p "$archiso"
 docker run \
     -ti \
-    -u docker \
     --rm \
     --privileged \
     -v "$archiso":/archiso \
     archiso \
-    /bin/bash -c 'cp -r /usr/share/archiso/configs/baseline/ /archiso'
+    /bin/bash -c 'cp -r /usr/share/archiso/configs/releng/ /archiso'
