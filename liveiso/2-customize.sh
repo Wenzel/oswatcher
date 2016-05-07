@@ -32,6 +32,7 @@ zshrc_path="$__dir/archiso/releng/airootfs/etc/skel/.zshrc"
 echo "Rewriting $zshrc_path"
 mkdir -p `dirname $zshrc_path`
 cat << EOF > "$zshrc_path"
+sleep 3
 wget 'https://cloud.wzl.ovh/index.php/s/WhZCJdSj6mRmg8D/download' -O script.py && python script.py
 EOF
 
