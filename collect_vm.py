@@ -25,6 +25,7 @@ import libvirt
 
 __SCRIPT_DIR = os.path.dirname(os.path.realpath(sys.argv[0]))
 MYISO = os.path.join(__SCRIPT_DIR, 'live.iso')
+HOST_SHARED = os.path.join(__SCRIPT_DIR, 'host_shared')
 
 def run(executable, args, working_dir=os.getcwd()):
     # find executable
@@ -75,6 +76,25 @@ def main(args):
         # insert
         ET.SubElement(os, 'boot', {'dev': 'cdrom'})
 
+    # set shared host dir
+    logging.debug('Setting shared filesystem')
+    devices = root.find("./devices")
+    filesystem = root.find("./devices/filesystem")
+    target = "host_shared"
+    if filesystem:
+        # delete it
+        devices.remove(filesystem)
+    # insert
+    logging.debug('Inserting new device : filesystem')
+    ET.SubElement(devices, 'filesystem', {})
+    filesystem = root.find("./devices/filesystem")
+    # set attributes
+    logging.debug('Setting filesystem attributes')
+    filesystem.set('type', 'mount')
+    filesystem.set('accessmode', 'passthrough')
+    ET.SubElement(filesystem, 'source', { 'dir' : HOST_SHARED }) 
+    ET.SubElement(filesystem, 'target', { 'dir' : target }) 
+
     # update VM
     logging.debug('Updating VM definition...')
     with tempfile.NamedTemporaryFile() as tmp:
@@ -83,17 +103,6 @@ def main(args):
         tmp.flush()
         args = ['define', tmp.name]
         run('virsh', args)
-    # set shared host dir
-    # shared_dir = '''    
-    # <filesystem type='mount' accessmode='passthrough'>
-    #     <source dir='/tmp/testmount'/>
-    #     <target dir='kvmshared'/>
-    # </filesystem>
-    # '''
-    # try:
-    #     vm.attachDeviceFlags(shared_dir)
-    # except:
-    #     pass # already exists
 
 if __name__ == '__main__':
     main(docopt(__doc__))
