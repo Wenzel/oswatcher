@@ -17,6 +17,7 @@ import tempfile
 import logging
 import shutil
 import xml.etree.ElementTree as ET
+from collections import deque
 
 # 3rd
 from docopt import docopt
@@ -80,9 +81,40 @@ def main(args):
     for mount_point, device in mps.items():
         g.mount_ro(device, mount_point)
 
-    # enumerate
-    enum = g.ls('/tmp')
-    print(enum)
-    
+    visit(g, '/')
+
+def deep_walk(func):
+    def wrapper(g, node):
+        stack = []
+        stack.append(node)
+        while len(stack) != 0:
+            node = stack.pop()
+            func(g, node)
+            if g.is_dir(node):
+                entries = g.ls(node)
+                for entry in entries:
+                    abs_path = node + '/' + entry
+                    stack.append(abs_path)
+    return wrapper
+
+def width_walk(func):
+    def wrapper(g, node):
+        queue = deque()
+        queue.append(node)
+        while len(queue) != 0:
+            node = queue.popleft()
+            func(g, node)
+            if g.is_dir(node):
+                entries = g.ls(node)
+                for entry in entries:
+                    abs_path = node + '/' + entry
+                    queue.append(abs_path)
+    return wrapper
+
+
+@deep_walk
+def visit(g, node):
+    print(node)
+
 if __name__ == '__main__':
     main(docopt(__doc__))
