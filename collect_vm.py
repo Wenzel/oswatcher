@@ -23,7 +23,10 @@ from collections import deque
 from docopt import docopt
 import libvirt
 import guestfs
+from sqlalchemy import insert
 
+# local
+import db
 
 __SCRIPT_DIR = os.path.dirname(os.path.realpath(sys.argv[0]))
 
@@ -83,7 +86,7 @@ def main(args):
 
     visit(g, '/')
 
-def deep_walk(func):
+def deep_walk_it(func):
     def wrapper(g, node):
         stack = []
         stack.append(node)
@@ -94,10 +97,11 @@ def deep_walk(func):
                 entries = g.ls(node)
                 for entry in entries:
                     abs_path = node + '/' + entry
+                    abs_path = abs_path.replace('//', '/')
                     stack.append(abs_path)
     return wrapper
 
-def width_walk(func):
+def width_walk_it(func):
     def wrapper(g, node):
         queue = deque()
         queue.append(node)
@@ -108,13 +112,58 @@ def width_walk(func):
                 entries = g.ls(node)
                 for entry in entries:
                     abs_path = node + '/' + entry
+                    abs_path = abs_path.replace('//', '/')
                     queue.append(abs_path)
     return wrapper
 
+def deep_walk_rec(func):
+    def wrapper(g, node):
+        func(g, node)
+        if g.is_dir(node):
+            entries = g.ls(node)
+            for entry in entries:
+                abs_path =  + '/' + entry
+                abs_path = abs_path.replace('//', '/')
+                wrapper(g, abs_path, parent)
+                
+    return wrapper
 
-@deep_walk
+@deep_walk_it
 def visit(g, node):
-    print(node)
+    print("Inserting {}".format(node))
+
+    path_components = []
+    entry = os.path.basename(node)
+    # decompose path
+    parent_id = 0
+    path = node
+    while path != '/':
+        # get up
+        path = os.path.dirname(path)
+        # insert new path component
+        component = os.path.basename(path)
+        # basename on '/' returns an empty string
+        # we have to set it to the root entry manually
+        if not component:
+            component = '/'
+        path_components.append(component)
+     
+    print(path_components)
+    # found each parent dir
+    while len(path_components) > 0:
+        # take next parent_dir
+        parent_dir = path_components.pop()
+        # query for ID
+        fs_obj = db.session.query(db.Filesystem).filter_by(parent_id=parent_id, entry=parent_dir).all()[0]
+        # update parent and last_dir
+        parent_id = fs_obj.id
+        # print("parent {} -> {}".format(parent_dir, parent_id))
+    # root ?
+    if entry == '':
+        entry = '/'
+    trans = insert(db.Filesystem)
+    trans.execute(parent_id=parent_id, entry=entry)
+    db.session.commit()
 
 if __name__ == '__main__':
     main(docopt(__doc__))
