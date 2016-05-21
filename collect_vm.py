@@ -85,14 +85,15 @@ def main(args):
         g.mount_ro(device, mount_point)
 
     visit(g, '/')
+    db.session.commit()
 
 def deep_walk_it(func):
-    def wrapper(g, node):
+    def wrapper(*args, **kwargs):
         stack = []
         stack.append(node)
         while len(stack) != 0:
             node = stack.pop()
-            func(g, node)
+            func(args, kwars)
             if g.is_dir(node):
                 entries = g.ls(node)
                 for entry in entries:
@@ -130,12 +131,10 @@ def deep_walk_rec(func):
 
 @deep_walk_it
 def visit(g, node):
-    print("Inserting {}".format(node))
+    print(node)
 
     path_components = []
-    entry = os.path.basename(node)
     # decompose path
-    parent_id = 0
     path = node
     while path != '/':
         # get up
@@ -149,21 +148,25 @@ def visit(g, node):
         path_components.append(component)
      
     print(path_components)
+
+    path_ids = []
     # found each parent dir
     while len(path_components) > 0:
         # take next parent_dir
-        parent_dir = path_components.pop()
+        component = path_components.pop()
         # query for ID
-        fs_obj = db.session.query(db.Filesystem).filter_by(parent_id=parent_id, entry=parent_dir).all()[0]
-        # update parent and last_dir
-        parent_id = fs_obj.id
-        # print("parent {} -> {}".format(parent_dir, parent_id))
+        fs_obj = db.session.query(db.Filesystem).filter(db.Filesystem.name == component, db.Filesystem.path.contains(path_ids)).all()[0]
+        # append id to path_ids
+        path_ids.append(fs_obj.id)
     # root ?
-    if entry == '':
-        entry = '/'
+    name = os.path.basename(node)
+    if name == '':
+        name = '/'
     trans = insert(db.Filesystem)
-    trans.execute(parent_id=parent_id, entry=entry)
-    db.session.commit()
+    trans.execute(path=path_ids, name=name)
+
+def count(counter):
+    counter
 
 if __name__ == '__main__':
     main(docopt(__doc__))

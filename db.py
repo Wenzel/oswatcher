@@ -5,7 +5,7 @@ from sqlalchemy.orm import sessionmaker
 import config
 
 # global
-engine = create_engine('mysql+cymysql://{}:{}@{}/{}'.format(
+engine = create_engine('postgres://{}:{}@{}/{}'.format(
     config.DB_USER,
     config.DB_PASS,
     config.DB_HOST,
