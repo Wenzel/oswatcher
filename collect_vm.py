@@ -47,7 +47,6 @@ class VM:
             print('Cannot find VM main disk !')
             sys.exit(1)
         qcow_path = disk.find('source').get('file')
-        print(qcow_path)
         # init libguestfs
         self.g = guestfs.GuestFS(python_return_dict=True)
         # attach drive
@@ -63,7 +62,6 @@ class VM:
         # we should have one main filesystem
         root = roots[0]
         mps = self.g.inspect_get_mountpoints (root)
-        print(mps)
         # mount filesystem
         for mount_point, device in mps.items():
             self.g.mount_ro(device, mount_point)
@@ -100,7 +98,6 @@ class VM:
         print(end="\033[K") # clear the line
         print("[{} %] {}".format(perc, node), end='\r')
 
-        return
         path_components = []
         # decompose path
         path = node
