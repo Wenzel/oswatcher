@@ -79,6 +79,8 @@ class VM:
 
     def walk_count(self, node):
         self.total_entries += 1
+        print(end="\033[K") # clear the line
+        print("Enumerating entries ... [{}]".format(self.total_entries), end='\r')
         if self.g.is_dir(node):
             entries = self.g.ls(node)
             for entry in entries:
