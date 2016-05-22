@@ -66,10 +66,13 @@ class VM:
         for mount_point, device in mps.items():
             self.g.mount_ro(device, mount_point)
 
-    def capture_filesystem(self):
-        self.total_entries = 0
-        self.walk_count('/')
+        # init variables
+        self.cache_path_ids = []
         self.counter = 0
+        self.total_entries = 0
+
+    def capture_filesystem(self):
+        self.walk_count('/')
         self.walk_capture('/')
         db.session.commit()
 
@@ -113,14 +116,43 @@ class VM:
             path_components.append(component)
          
         path_ids = []
+        # ['c', 'b', 'a'] => ['a', 'b', 'c']
+        path_components.reverse()
+        # print(path_components)
+        # print(self.cache_path_ids)
         # found each parent dir
-        while len(path_components) > 0:
-            # take next parent_dir
-            component = path_components.pop()
-            # query for ID
-            fs_obj = db.session.query(db.Filesystem).filter(db.Filesystem.name == component, db.Filesystem.path.contains(path_ids)).all()[0]
-            # append id to path_ids
-            path_ids.append(fs_obj.id)
+        for i, component in enumerate(path_components):
+            # try cache
+            try:
+                cache_entry = self.cache_path_ids[i]
+                component_id = cache_entry[1]
+                # tuple ("dir", id)
+                if cache_entry[0] == component:
+                    # print('found {} in cache'.format(component))
+                    # we found an id in the cache !
+                    path_ids.append(component_id)
+                else:
+                    # print('invalidate cache')
+                    # delete element starting from index i to the end
+                    del self.cache_path_ids[i:]
+                    # query for ID
+                    fs_obj = db.session.query(db.Filesystem).filter(db.Filesystem.name == component, db.Filesystem.path.contains(path_ids)).all()[0]
+                    # append id to path_ids
+                    path_ids.append(fs_obj.id)
+                    # append new cache entry
+                    cache_entry = (component, fs_obj.id)
+                    self.cache_path_ids.append(cache_entry)
+
+            except IndexError:
+                # print("IndexError {}, outside of cache".format(i))
+                # query for ID
+                fs_obj = db.session.query(db.Filesystem).filter(db.Filesystem.name == component, db.Filesystem.path.contains(path_ids)).all()[0]
+                # append id to path_ids
+                path_ids.append(fs_obj.id)
+                # append new cache entry
+                cache_entry = (component, fs_obj.id)
+                self.cache_path_ids.append(cache_entry)
+
         # root ?
         name = os.path.basename(node)
         if name == '':
