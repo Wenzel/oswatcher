@@ -26,7 +26,8 @@ import guestfs
 from sqlalchemy import insert
 
 # local
-import db
+# import db
+from db import OSWatcherDB
 
 __SCRIPT_DIR = os.path.dirname(os.path.realpath(sys.argv[0]))
 
@@ -34,52 +35,58 @@ class VM:
 
     def __init__(self, vm_name):
         # connect to QEMU
+        logging.info('Connecting to qemu:///session')
         self.con = libvirt.open('qemu:///session')
         if self.con == None:
-            print('Failed to connect to Hypervisor !')
+            logging.info('Failed to connect to Hypervisor !')
             sys.exit(1)
         # search vm
+        logging.info('Searching VM')
         vm = self.con.lookupByName(vm_name)
         # find qcow path
+        logging.info('Finding hard disk')
         root = ET.fromstring(vm.XMLDesc())
         disk = root.find("./devices/disk[@type='file'][@device='disk']")
         if disk is None:
-            print('Cannot find VM main disk !')
+            logging.info('Cannot find VM main disk !')
             sys.exit(1)
         qcow_path = disk.find('source').get('file')
+        logging.info(qcow_path)
         # init libguestfs
         self.g = guestfs.GuestFS(python_return_dict=True)
         # attach drive
         self.g.add_drive_opts(qcow_path, readonly=1)
         # run libguestfs backend
+        logging.info('Running libguestfs')
         self.g.launch()
         # inspect operating system
         roots = self.g.inspect_os()
         if len(roots) == 0:
-            print('No operating system found !')
+            logging.info('No operating system found !')
             sys.exit(1)
 
         # we should have one main filesystem
         root = roots[0]
         mps = self.g.inspect_get_mountpoints (root)
         # mount filesystem
+        logging.info('Mounting main filesystem')
         for mount_point, device in mps.items():
             self.g.mount_ro(device, mount_point)
 
+        self.db = OSWatcherDB(vm_name)
+
         # init variables
-        self.cache_path_ids = []
         self.counter = 0
         self.total_entries = 0
 
     def capture_filesystem(self):
         self.walk_count('/')
         self.walk_capture('/')
-        db.session.commit()
+        # db.session.commit()
 
 
     def walk_count(self, node):
         self.total_entries += 1
-        print(end="\033[K") # clear the line
         print("Enumerating entries ... [{}]".format(self.total_entries), end='\r')
         if self.g.is_dir(node):
             entries = self.g.ls(node)
@@ -89,7 +96,10 @@ class VM:
                 self.walk_count(abs_path)
 
     def walk_capture(self, node):
-        self.capture(node)
+        self.counter += 1
+        perc = round(self.counter * 100 / self.total_entries, 1)
+        logging.info("[{} %] {}".format(perc, node))
+        self.db.capture(node)
         if self.g.is_dir(node):
             entries = self.g.ls(node)
             for entry in entries:
@@ -98,69 +108,6 @@ class VM:
                 self.walk_capture(abs_path)
 
     def capture(self, node):
-        self.counter += 1
-        perc = round(self.counter * 100 / self.total_entries, 1)
-        print(end="\033[K") # clear the line
-        print("[{} %] {}".format(perc, node), end='\r')
-
-        path_components = []
-        # decompose path
-        path = node
-        while path != '/':
-            # get up
-            path = os.path.dirname(path)
-            # insert new path component
-            component = os.path.basename(path)
-            # basename on '/' returns an empty string
-            # we have to set it to the root entry manually
-            if not component:
-                component = '/'
-            path_components.append(component)
-         
-        path_ids = []
-        # ['c', 'b', 'a'] => ['a', 'b', 'c']
-        path_components.reverse()
-        # print(path_components)
-        # print(self.cache_path_ids)
-        # found each parent dir
-        for i, component in enumerate(path_components):
-            # try cache
-            try:
-                cache_entry = self.cache_path_ids[i]
-                component_id = cache_entry[1]
-                # tuple ("dir", id)
-                if cache_entry[0] == component:
-                    # print('found {} in cache'.format(component))
-                    # we found an id in the cache !
-                    path_ids.append(component_id)
-                else:
-                    # print('invalidate cache')
-                    # delete element starting from index i to the end
-                    del self.cache_path_ids[i:]
-                    # query for ID
-                    fs_obj = db.session.query(db.Filesystem).filter(db.Filesystem.name == component, db.Filesystem.path.contains(path_ids)).all()[0]
-                    # append id to path_ids
-                    path_ids.append(fs_obj.id)
-                    # append new cache entry
-                    cache_entry = (component, fs_obj.id)
-                    self.cache_path_ids.append(cache_entry)
-
-            except IndexError:
-                # print("IndexError {}, outside of cache".format(i))
-                # query for ID
-                fs_obj = db.session.query(db.Filesystem).filter(db.Filesystem.name == component, db.Filesystem.path.contains(path_ids)).all()[0]
-                # append id to path_ids
-                path_ids.append(fs_obj.id)
-                # append new cache entry
-                cache_entry = (component, fs_obj.id)
-                self.cache_path_ids.append(cache_entry)
-
-        # root ?
-        name = os.path.basename(node)
-        if name == '':
-            name = '/'
-        trans = insert(db.Filesystem)
-        trans.execute(path=path_ids, name=name)
 
 def init_logger():
     logger = logging.getLogger()
