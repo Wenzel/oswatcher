@@ -1,3 +1,3 @@
-FROM postgres:latest
+FROM mysql:latest
 
-COPY create.sql /docker-entrypoint-initdb.d
+COPY db.sql /docker-entrypoint-initdb.d
