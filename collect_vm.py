@@ -23,10 +23,7 @@ from collections import deque
 from docopt import docopt
 import libvirt
 import guestfs
-from sqlalchemy import insert
 
-# local
-# import db
 from db import OSWatcherDB
 
 __SCRIPT_DIR = os.path.dirname(os.path.realpath(sys.argv[0]))
@@ -82,7 +79,6 @@ class VM:
     def capture_filesystem(self):
         self.walk_count('/')
         self.walk_capture('/')
-        # db.session.commit()
 
 
     def walk_count(self, node):
@@ -99,7 +95,8 @@ class VM:
         self.counter += 1
         perc = round(self.counter * 100 / self.total_entries, 1)
         logging.info("[{} %] {}".format(perc, node))
-        self.db.capture(node)
+        metadata = self.g.lstatns(node)
+        self.db.capture(node, metadata)
         if self.g.is_dir(node):
             entries = self.g.ls(node)
             for entry in entries:
@@ -107,12 +104,10 @@ class VM:
                 abs_path = abs_path.replace('//', '/')
                 self.walk_capture(abs_path)
 
-    def capture(self, node):
-
 def init_logger():
     logger = logging.getLogger()
     logger.addHandler(logging.StreamHandler())
-    logger.setLevel(logging.DEBUG)
+    logger.setLevel(logging.INFO)
 
 def main(args):
     init_logger()
