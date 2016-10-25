@@ -66,6 +66,7 @@ class OSWatcherDB:
             # clear OS
             for os_obj in self.session.query(OS).filter(OS.id == os_id):
                 self.session.delete(os_obj)
+            self.session.commit()
 
     def capture(self, node, metadata):
         path_components = []
