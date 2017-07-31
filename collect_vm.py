@@ -11,22 +11,19 @@ Options:
 # sys
 import os
 import sys
-import re
-import subprocess
-import tempfile
 import logging
-import shutil
 import xml.etree.ElementTree as ET
-from collections import deque
 
 # 3rd
 from docopt import docopt
+from py2neo import Graph
+from model import Inode
 import libvirt
 import guestfs
 
-from db import OSWatcherDB
-
 __SCRIPT_DIR = os.path.dirname(os.path.realpath(sys.argv[0]))
+DB_PASSWORD = "admin"
+
 
 class VM:
 
@@ -70,7 +67,9 @@ class VM:
         for mount_point, device in mps.items():
             self.g.mount_ro(device, mount_point)
 
-        self.db = OSWatcherDB(vm_name)
+        self.graph = Graph(password=DB_PASSWORD)
+        # debug, erase every node
+        self.graph.delete_all()
 
         # init variables
         self.counter = 0
@@ -78,7 +77,10 @@ class VM:
 
     def capture_filesystem(self):
         self.walk_count('/')
+        self.tx = self.graph.begin()
         self.walk_capture('/')
+        logging.info('Committing graph transaction...')
+        self.tx.commit()
 
 
     def walk_count(self, node):
@@ -96,18 +98,29 @@ class VM:
         perc = round(self.counter * 100 / self.total_entries, 1)
         logging.info("[{} %] {}".format(perc, node))
         metadata = self.g.lstatns(node)
-        self.db.capture(node, metadata)
+        inode = Inode()
+        filename = os.path.basename(node)
+        # root ?
+        if not filename:
+            filename = "/"
+        inode.filename = filename
+        # add node to graph
+        self.tx.append(inode)
         if self.g.is_dir(node):
             entries = self.g.ls(node)
             for entry in entries:
                 abs_path = node + '/' + entry
                 abs_path = abs_path.replace('//', '/')
-                self.walk_capture(abs_path)
+                child = self.walk_capture(abs_path)
+                # create relationship
+                #inode.children.add(child)
+        return inode
 
 def init_logger():
-    logger = logging.getLogger()
-    logger.addHandler(logging.StreamHandler())
-    logger.setLevel(logging.INFO)
+    logging.getLogger().setLevel(logging.INFO)
+    # suppress annoying log output
+    logging.getLogger("httpstream").setLevel(logging.WARNING)
+    logging.getLogger("neo4j.bolt").setLevel(logging.WARNING)
 
 def main(args):
     init_logger()
