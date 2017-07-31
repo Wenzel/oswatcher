@@ -1,0 +1,3 @@
+docopt
+libvirt-python
+py2neo
