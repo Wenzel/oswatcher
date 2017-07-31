@@ -77,6 +77,7 @@ class VM:
 
     def capture_filesystem(self):
         self.walk_count('/')
+        # start a transaction
         self.tx = self.graph.begin()
         self.walk_capture('/')
         logging.info('Committing graph transaction...')
@@ -112,8 +113,6 @@ class VM:
                 abs_path = node + '/' + entry
                 abs_path = abs_path.replace('//', '/')
                 child = self.walk_capture(abs_path)
-                # create relationship
-                #inode.children.add(child)
         return inode
 
 def init_logger():
