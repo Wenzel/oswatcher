@@ -77,11 +77,8 @@ class VM:
 
     def capture_filesystem(self):
         self.walk_count('/')
-        # start a transaction
-        self.tx = self.graph.begin()
         self.walk_capture('/')
-        logging.info('Committing graph transaction...')
-        self.tx.commit()
+
 
 
     def walk_count(self, node):
@@ -105,14 +102,15 @@ class VM:
         if not filename:
             filename = "/"
         inode.filename = filename
-        # add node to graph
-        self.tx.append(inode)
         if self.g.is_dir(node):
             entries = self.g.ls(node)
             for entry in entries:
                 abs_path = node + '/' + entry
                 abs_path = abs_path.replace('//', '/')
                 child = self.walk_capture(abs_path)
+                inode.children.add(child)
+
+        self.graph.create(inode)
         return inode
 
 def init_logger():
