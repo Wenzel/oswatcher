@@ -30,7 +30,6 @@ DB_PASSWORD = "admin"
 class VM:
 
     def __init__(self, vm_name, uri):
-        print(uri)
         # connect to QEMU
         logging.info('Connecting to {}'.format(uri))
         self.con = libvirt.open(uri)
