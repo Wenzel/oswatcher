@@ -96,12 +96,7 @@ class VM:
         perc = round(self.counter * 100 / self.total_entries, 1)
         logging.info("[{} %] {}".format(perc, node))
         metadata = self.g.lstatns(node)
-        inode = Inode()
-        filename = os.path.basename(node)
-        # root ?
-        if not filename:
-            filename = "/"
-        inode.filename = filename
+        inode = Inode(self.g, node)
         if self.g.is_dir(node):
             entries = self.g.ls(node)
             for entry in entries:
