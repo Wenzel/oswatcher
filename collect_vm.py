@@ -13,6 +13,7 @@ import os
 import sys
 import logging
 import xml.etree.ElementTree as ET
+from pathlib import Path
 
 # 3rd
 from docopt import docopt
@@ -76,34 +77,32 @@ class VM:
         self.total_entries = 0
 
     def capture_filesystem(self):
-        self.walk_count('/')
-        self.walk_capture('/')
+        root = Path('/')
+        self.walk_count(root)
+        self.walk_capture(root)
 
 
 
     def walk_count(self, node):
         self.total_entries += 1
         print("Enumerating entries ... [{}]".format(self.total_entries), end='\r')
-        if self.g.is_dir(node):
-            entries = self.g.ls(node)
+        if self.g.is_dir(str(node)):
+            entries = self.g.ls(str(node))
             for entry in entries:
-                abs_path = node + '/' + entry
-                abs_path = abs_path.replace('//', '/')
-                self.walk_count(abs_path)
+                subnode_abs = node / entry
+                self.walk_count(subnode_abs)
 
     def walk_capture(self, node):
         self.counter += 1
         perc = round(self.counter * 100 / self.total_entries, 1)
         logging.info("[{} %] {}".format(perc, node))
-        metadata = self.g.lstatns(node)
         inode = Inode(self.g, node)
-        if self.g.is_dir(node):
-            entries = self.g.ls(node)
+        if self.g.is_dir(str(node)):
+            entries = self.g.ls(str(node))
             for entry in entries:
-                abs_path = node + '/' + entry
-                abs_path = abs_path.replace('//', '/')
-                child = self.walk_capture(abs_path)
-                inode.children.add(child)
+                subnode_abs = node / entry
+                child_inode = self.walk_capture(subnode_abs)
+                inode.children.add(child_inode)
 
         self.graph.create(inode)
         return inode

@@ -1,16 +1,14 @@
-import os
-
-from py2neo.ogm import GraphObject, Property, RelatedFrom, RelatedTo
+from py2neo.ogm import GraphObject, Property, RelatedTo
 
 class Inode(GraphObject):
 
     def __init__(self, guestfs, filepath):
         super().__init__()
-        filename = os.path.basename(filepath)
+        name = filepath.name
         # root ?
-        if not filename:
-            filename = "/"
-        self.filename = filename
+        if not name:
+            name = filepath.anchor
+        self.filename = name
 
     filename = Property()
     children = RelatedTo("Inode", "has_child")
