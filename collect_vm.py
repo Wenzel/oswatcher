@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 
 """
-Usage: collect_vm.py <vm_name>
+Usage: collect_vm.py [options] <vm_name>
 
 Options:
-    -h --help               Display this message
+    -h --help                       Display this message
+    -c --connection=<URI>           Specify a libvirt URI [Default: qemu:///session]
 """
 
 
@@ -28,10 +29,11 @@ DB_PASSWORD = "admin"
 
 class VM:
 
-    def __init__(self, vm_name):
+    def __init__(self, vm_name, uri):
+        print(uri)
         # connect to QEMU
-        logging.info('Connecting to qemu:///session')
-        self.con = libvirt.open('qemu:///session')
+        logging.info('Connecting to {}'.format(uri))
+        self.con = libvirt.open(uri)
         if self.con == None:
             logging.info('Failed to connect to Hypervisor !')
             sys.exit(1)
@@ -116,7 +118,8 @@ def init_logger():
 def main(args):
     init_logger()
     vm_name = args['<vm_name>']
-    vm = VM(vm_name)
+    uri = args['--connection']
+    vm = VM(vm_name, uri)
     vm.capture_filesystem()
 
 
