@@ -90,3 +90,6 @@ ENV/
 
 # intellij
 .idea/
+
+# oswatcher images libvirt pool
+images/
