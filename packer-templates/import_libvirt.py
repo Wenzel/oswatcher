@@ -19,7 +19,7 @@ import xml.etree.ElementTree as tree
 import libvirt
 from docopt import docopt
 
-PREFIX = 'oswatcher'
+PREFIX = 'osw'
 POOL_DIR_PATH_REL = '../images'
 OSW_POOL_NAME = 'oswatcher'
 PACKER_OUTPUT_DIR = 'output-qemu'
