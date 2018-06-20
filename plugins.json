@@ -1,0 +1,6 @@
+{
+    "name": "plugins.commands.CommandsHook",
+    "configuration": {
+        "agent-port": 8080
+    }
+}
