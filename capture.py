@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-Usage: capture.py [options] <vm_name>
+Usage: capture.py [options] <vm_name> <plugins_configuration>
 
 Options:
     -h --help                       Display this message
@@ -14,6 +14,7 @@ import os
 import sys
 import logging
 import json
+import time
 import xml.etree.ElementTree as ET
 from tempfile import NamedTemporaryFile
 from contextlib import contextmanager
@@ -30,6 +31,9 @@ __SCRIPT_DIR = os.path.dirname(os.path.realpath(sys.argv[0]))
 
 def protocol(context):
     context.trigger('init')
+    context.poweron()
+    time.sleep(30)
+    context.poweroff()
 
 
 def get_hard_disk(domain):
@@ -59,6 +63,7 @@ def generate_see_context(domain_name, uri):
     osw_storage_path = os.path.join(__SCRIPT_DIR, 'instances')
 
     context_config = {
+        "hypervisor": uri,
         "domain": {
             "configuration": domain_tmp_f.name
         },
@@ -87,12 +92,12 @@ def init_logger():
     logging.getLogger("neo4j.bolt").setLevel(logging.WARNING)
 
 
-def main(vm_name, uri):
+def main(vm_name, uri, plugins_config):
     init_logger()
 
     with generate_see_context(vm_name, uri) as context_path:
         context = QEMUContextFactory(context_path)
-        with Environment(context, {}) as environment:
+        with Environment(context, plugins_config) as environment:
             protocol(environment.context)
 
 
@@ -100,4 +105,5 @@ if __name__ == '__main__':
     args = docopt(__doc__)
     vm_name = args['<vm_name>']
     uri = args['--connection']
-    main(vm_name, uri)
+    plugins_config = args['<plugins_configuration>']
+    main(vm_name, uri, plugins_config)
