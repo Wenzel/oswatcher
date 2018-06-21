@@ -1,0 +1,8 @@
+{
+  "hooks":
+  [
+    {
+      "name": "hooks.filesystem.FilesystemHook"
+    }
+  ]
+}
