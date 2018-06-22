@@ -2,7 +2,7 @@ from py2neo.ogm import GraphObject, Property, RelatedTo
 
 class Inode(GraphObject):
 
-    def __init__(self, guestfs, filepath):
+    def __init__(self, guestfs, filepath, checksums):
         super().__init__()
         s_filepath = str(filepath)
         name = filepath.name
@@ -10,7 +10,7 @@ class Inode(GraphObject):
         if not name:
             name = filepath.anchor
         self.name = name
-        if guestfs.is_file(s_filepath):
+        if guestfs.is_file(s_filepath) and checksums:
             # checksums
             self.md5sum = guestfs.checksum('md5', s_filepath)
             self.sha1sum = guestfs.checksum('sha1', s_filepath)

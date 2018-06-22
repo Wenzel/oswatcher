@@ -1,8 +1,14 @@
 {
-  "hooks":
-  [
-    {
-      "name": "hooks.filesystem.FilesystemHook"
-    }
-  ]
+    "hooks":
+    [
+        {
+            "name": "hooks.filesystem.FilesystemHook",
+            "configuration":
+            {
+                "delete": true,
+                "enumerate": true,
+                "inode_checksums": false
+            }
+        }
+    ]
 }
