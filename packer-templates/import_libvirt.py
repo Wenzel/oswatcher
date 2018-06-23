@@ -88,9 +88,10 @@ def main(args):
         # remove output-qemu
         output_qemu_path = str(Path(script_dir / PACKER_OUTPUT_DIR))
         shutil.rmtree(output_qemu_path)
+        # refresh storage pool
+        storage.refresh()
     else:
         logging.info('Domain {} already defined'.format(domain_name))
-
 
 
 if __name__ == '__main__':

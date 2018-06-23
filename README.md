@@ -14,10 +14,13 @@ source venv/bin/activate
 pip install -r requirements.txt
 ~~~
 
+Note: We have to use `--system-site-packages` because `libguestfs` is not
+available on `pip`.
+
 # usage
 
 ~~~
-(venv) $ ./collect_vm.py <vm_name>
+(venv) $ python -m oswatcher.capture <vm_name> hooks.json
 ~~~
 
 Access `Neo4j` web interface at `http://localhost:7474`
