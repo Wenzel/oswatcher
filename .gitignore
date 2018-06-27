@@ -92,4 +92,7 @@ ENV/
 .idea/
 
 # oswatcher images libvirt pool
-images/
+nimages/
+
+# node
+node_modules/
