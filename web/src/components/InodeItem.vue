@@ -1,9 +1,18 @@
 <template>
-<div>
-  Item !
-</div>
+<li>
+  {{ inode.name }}
+</li>
 </template>
 <script>
+export default {
+  props: {
+    inode: {
+      type: Object,
+      required: true
+    }
+  }
+}
+
 </script>
 
 <style>
