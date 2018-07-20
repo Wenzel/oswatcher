@@ -4,7 +4,7 @@ import re
 from io import StringIO
 
 # local
-from oswatcher.model import SyscallTable, Syscall
+from oswatcher.model import Syscall
 
 # 3rd
 from see import Hook
@@ -42,7 +42,7 @@ class SyscallTableHook(Hook):
         self.logger.debug('Running Rekall SSDT plugin')
         s.RunPlugin("ssdt", output=output)
         sdt = self.parse_ssdt_output(output)
-        # self.insert_db(sdt)
+        self.insert_db(sdt)
 
     def parse_ssdt_output(self, output):
         sdt = []
@@ -72,9 +72,6 @@ class SyscallTableHook(Hook):
     def insert_db(self, sdt):
         self.logger.info('Inserting syscall table into database')
         for table_index, table in sdt:
-            systable = SyscallTable(table_index, self.TABLE_NAMES[table_index])
             for index, name, address in table:
-                syscall = Syscall(index, name, address)
-                systable.syscalls.add(syscall)
+                syscall = Syscall(self.TABLE_NAMES[table_index], index, name, address)
                 self.graph.create(syscall)
-            self.graph.create(systable)

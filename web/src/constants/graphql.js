@@ -8,24 +8,13 @@ export const ALL_INODES_QUERY = gql`
   }
 `
 
-export const ALL_SYSCALL_TABLES_QUERY = gql`
-  query AllSyscallTablesQuery {
-    SyscallTable {
-      index
-      name
-    }
-  }
-`
-
-export const ALL_SYSCALLS_FOR_TABLE = gql`
-  query AllSyscallForTable($table_name: String!) {
+export const ALL_SYSCALLS_QUERY = gql`
+  query AllSyscallQuery {
     Syscall {
+      table
       index
       name
       address
-      hasSyscall(name: $table_name) {
-        name
-      }
     }
   }
 `

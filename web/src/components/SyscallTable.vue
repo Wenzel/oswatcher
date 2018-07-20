@@ -1,12 +1,14 @@
 <template>
 <div>
-  <h2>Syscall Table {{ table.index }}: {{ table.name }}</h2>
+  <h2>Syscall Table</h2>
   <tr>
+    <th>Table</th>
     <th>Index</th>
     <th>Name</th>
     <th>Address</th>
   </tr>
   <tr v-for="syscall in Syscall" :key="syscall.name">
+    <td> {{ syscall.table }} </td>
     <td> {{ syscall.index }} </td>
     <td> {{ syscall.name }} </td>
     <td> {{ syscall.address }} </td>
@@ -15,7 +17,7 @@
 </template>
 
 <script>
-import { ALL_SYSCALLS_FOR_TABLE } from '../constants/graphql.js'
+import { ALL_SYSCALLS_QUERY } from '../constants/graphql.js'
 
 export default {
   data () {
@@ -24,15 +26,9 @@ export default {
       loading: 0
     }
   },
-  props: {
-    table: Object
-  },
   apollo: {
     Syscall: {
-      query: ALL_SYSCALLS_FOR_TABLE,
-      variables: {
-        table_name: 'nt'
-      }
+      query: ALL_SYSCALLS_QUERY
     }
   }
 }

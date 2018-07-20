@@ -36,30 +36,17 @@ class Inode(GraphObject):
     children = RelatedTo("Inode", "has_child")
 
 
-class SyscallTable(GraphObject):
-
-    def __init__(self, index, name):
-        super().__init__()
-        self.index = index
-        self.name = name
-
-    # properties
-    index = Property()
-    name = Property()
-
-    syscalls = RelatedTo("Syscall")
-
 class Syscall(GraphObject):
 
-    def __init__(self, index, name, address):
+    def __init__(self, table, index, name, address):
         super().__init__()
+        self.table = table
         self.index = index
         self.name = name
         self.address = address
 
     # properties
+    table = Property()
     index = Property()
     name = Property()
     address = Property()
-
-    table = RelatedFrom("SyscallTable")

@@ -31,7 +31,7 @@ from see.context import QEMUContextFactory
 
 __SCRIPT_DIR = os.path.dirname(os.path.realpath(sys.argv[0]))
 DB_PASSWORD = "admin"
-DESKTOP_READY_WAIT_TIME = 60
+DESKTOP_READY_WAIT_TIME = 40
 
 
 class QEMUDomainContextFactory(QEMUContextFactory):
