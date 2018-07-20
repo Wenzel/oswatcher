@@ -31,6 +31,7 @@ from see.context import QEMUContextFactory
 
 __SCRIPT_DIR = os.path.dirname(os.path.realpath(sys.argv[0]))
 DB_PASSWORD = "admin"
+DESKTOP_READY_WAIT_TIME = 40
 
 
 class QEMUDomainContextFactory(QEMUContextFactory):
@@ -76,7 +77,17 @@ class QEMUDomainContextFactory(QEMUContextFactory):
 
 
 def protocol(context):
-    context.trigger('offline')
+    # context.trigger('offline')
+    # start domain
+    logging.info("Starting the domain")
+    context.poweron()
+    # wait until desktop is ready
+    logging.debug("Waiting %d seconds for desktop to be ready", DESKTOP_READY_WAIT_TIME)
+    time.sleep(DESKTOP_READY_WAIT_TIME)
+    context.trigger('desktop_ready')
+    # shutdown
+    logging.info("Shutting down the domain")
+    context.poweroff()
 
 
 def init_logger(debug=False):

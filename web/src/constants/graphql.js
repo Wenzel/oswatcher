@@ -7,3 +7,14 @@ export const ALL_INODES_QUERY = gql`
     }
   }
 `
+
+export const ALL_SYSCALLS_QUERY = gql`
+  query AllSyscallQuery {
+    Syscall {
+      table
+      index
+      name
+      address
+    }
+  }
+`

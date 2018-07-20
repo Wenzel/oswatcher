@@ -1,4 +1,4 @@
-from py2neo.ogm import GraphObject, Property, RelatedTo
+from py2neo.ogm import GraphObject, Property, RelatedTo, RelatedFrom
 
 class Inode(GraphObject):
 
@@ -34,3 +34,19 @@ class Inode(GraphObject):
 
     # relationships
     children = RelatedTo("Inode", "has_child")
+
+
+class Syscall(GraphObject):
+
+    def __init__(self, table, index, name, address):
+        super().__init__()
+        self.table = table
+        self.index = index
+        self.name = name
+        self.address = address
+
+    # properties
+    table = Property()
+    index = Property()
+    name = Property()
+    address = Property()
