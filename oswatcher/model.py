@@ -1,4 +1,4 @@
-from py2neo.ogm import GraphObject, Property, RelatedTo
+from py2neo.ogm import GraphObject, Property, RelatedTo, RelatedFrom
 
 class Inode(GraphObject):
 
@@ -47,7 +47,7 @@ class SyscallTable(GraphObject):
     index = Property()
     name = Property()
 
-    syscalls = RelatedTo("Syscall", "has_syscall")
+    syscalls = RelatedTo("Syscall")
 
 class Syscall(GraphObject):
 
@@ -61,3 +61,5 @@ class Syscall(GraphObject):
     index = Property()
     name = Property()
     address = Property()
+
+    table = RelatedFrom("SyscallTable")
