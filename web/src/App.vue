@@ -1,32 +1,27 @@
 <template>
   <div>
     <h1>OSWatcher</h1>
-    <h2 v-if="loading">Loading...</h2>
-      <ul>
-        <li v-for="inode in allInodes" :key="inode.name">
-          lol
-        </li>
-      </ul>
+    <SyscallTable v-for="table in SyscallTable" :key="table.index" :table="table"/>
   </div>
 </template>
 
 <script>
-import InodeItem from './components/InodeItem.vue'
-import { ALL_INODES_QUERY } from './constants/graphql'
+import SyscallTable from './components/SyscallTable.vue'
+import { ALL_SYSCALL_TABLES_QUERY } from './constants/graphql.js'
 
 export default {
   data () {
     return {
-      allInodes: [],
+      SyscallTable: [],
       loading: 0
     }
   },
   components: {
-    InodeItem
+    SyscallTable
   },
   apollo: {
-    Inode: {
-      query: ALL_INODES_QUERY
+    SyscallTable: {
+      query: ALL_SYSCALL_TABLES_QUERY
     }
   }
 }
