@@ -1,19 +1,27 @@
 <template>
-<div>
-  <h2>Syscall Table</h2>
-  <tr>
-    <th>Table</th>
-    <th>Index</th>
-    <th>Name</th>
-    <th>Address</th>
-  </tr>
-  <tr v-for="syscall in Syscall" :key="syscall.name">
-    <td> {{ syscall.table }} </td>
-    <td> {{ syscall.index }} </td>
-    <td> {{ syscall.name }} </td>
-    <td> {{ syscall.address }} </td>
-  </tr>
-</div>
+  <div class="container">
+    <h1 class="title">Syscall Table</h1>
+    <b-field grouped group-multiline>
+      <b-select v-model="perPage" :disabled="!isPaginated">
+        <option value="5">5 per page</option>
+        <option value="10">10 per page</option>
+        <option value="15">15 per page</option>
+        <option value="20">20 per page</option>
+      </b-select>
+      <div class="control is-flex">
+        <b-switch v-model="isPaginated">Paginated</b-switch>
+      </div>
+      <div class="control is-flex">
+        <b-switch v-model="isPaginationSimple" :disabled="!isPaginated">Simple pagination</b-switch>
+      </div>
+    </b-field>
+    <b-table :data="Syscall" :columns="columns"
+                  :paginated="isPaginated"
+                  :per-page="perPage"
+                  :current-page.sync="currentPage"
+                  :pagination-simple="isPaginationSimple">
+    </b-table>
+  </div>
 </template>
 
 <script>
@@ -23,7 +31,30 @@ export default {
   data () {
     return {
       Syscall: [],
-      loading: 0
+      columns: [
+        {
+          field: 'table',
+          label: 'Table'
+        },
+        {
+          field: 'index',
+          label: 'Index',
+          numeric: true
+        },
+        {
+          field: 'name',
+          label: 'Name'
+        },
+        {
+          field: 'address',
+          label: 'Address'
+        }
+      ],
+      loading: 0,
+      isPaginated: true,
+      isPaginationSimple: false,
+      currentPage: 1,
+      perPage: 10
     }
   },
   apollo: {
