@@ -1,5 +1,14 @@
 import gql from 'graphql-tag'
 
+export const ALL_OS_QUERY = gql`
+  query AllInodesQuery {
+    OS {
+      _id
+      name
+    }
+  }
+`
+
 export const ALL_INODES_QUERY = gql`
   query AllInodesQuery {
     Inode {
