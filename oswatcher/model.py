@@ -46,7 +46,7 @@ class Inode(GraphObject):
 
 
     # relationships
-    children = RelatedTo("Inode", "has_child")
+    children = RelatedTo("Inode")
 
 
 class Syscall(GraphObject):
