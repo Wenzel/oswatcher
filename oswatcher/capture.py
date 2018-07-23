@@ -111,10 +111,12 @@ def main(vm_name, uri, hooks_config_path, debug):
     logging.info('connect to Neo4j DB')
     graph = Graph(password=DB_PASSWORD)
 
-    # insert graph object into general hook configuration
     if not 'configuration' in hooks_config:
         hooks_config['configuration'] = {}
+    # insert graph object into general hook configuration
     hooks_config['configuration']['graph'] = graph
+    # insert vm_name object
+    hooks_config['configuration']['domain_name'] = vm_name
 
     # delete entire graph ?
     if "delete" in hooks_config['configuration']:

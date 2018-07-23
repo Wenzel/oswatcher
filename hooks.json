@@ -6,6 +6,9 @@
     "hooks":
     [
         {
+            "name": "hooks.system.OperatingSystemHook"
+        },
+        {
             "name": "hooks.filesystem.FilesystemHook",
             "configuration":
             {

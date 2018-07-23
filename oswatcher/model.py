@@ -1,4 +1,18 @@
-from py2neo.ogm import GraphObject, Property, RelatedTo, RelatedFrom
+from py2neo.ogm import GraphObject, Property, RelatedTo
+
+class OS(GraphObject):
+
+    def __init__(self, name):
+        super().__init__()
+        self.name = name
+
+    # properties
+    name = Property()
+
+    # relationships
+    root_fileystem = RelatedTo("Inode")
+    syscalls = RelatedTo("Syscall")
+
 
 class Inode(GraphObject):
 
@@ -20,7 +34,6 @@ class Inode(GraphObject):
         # l -> if symbolic link, returns info about the link itself
         stat = guestfs.lstatns(s_filepath)
         self.size = stat['st_size']
-
 
 
     # properties
