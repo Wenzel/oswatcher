@@ -13,15 +13,15 @@
       </div>
       <div class="navbar-menu">
         <div class="navbar-start">
-          <a class="navbar-item">
-            Home
-          </a>
+          <router-link to="/">
+            <a class="navbar-item">
+              Home
+            </a>
+          </router-link>
         </div>
       </div>
     </nav>
-    <h1 class="title">Operating Systems</h1>
-    <b-table :data="OS" :columns="columns">
-    </b-table>
+    <router-view></router-view>
   </div>
 </template>
 
