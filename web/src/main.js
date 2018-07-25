@@ -1,10 +1,15 @@
 import Vue from 'vue'
 import App from './App'
+import router from './router'
+
+// Apollo
 import { ApolloClient } from 'apollo-client'
 import { HttpLink } from 'apollo-link-http'
 import { setContext } from 'apollo-link-context'
 import { InMemoryCache } from 'apollo-cache-inmemory'
 import VueApollo from 'vue-apollo'
+
+// Buefy
 import Buefy from 'buefy'
 import 'buefy/lib/buefy.css'
 
@@ -46,6 +51,7 @@ Vue.use(Buefy)
 /* eslint-disable no-new */
 new Vue({
   el: '#app',
+  router,
   render: h => h(App),
   provide: apolloProvider.provide()
 })

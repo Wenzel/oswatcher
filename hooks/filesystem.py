@@ -58,7 +58,11 @@ class FilesystemHook(Hook):
             self.walk_count(root)
         self.logger.info('Capturing filesystem')
         self.time_last_update = time.time()
-        self.walk_capture(root)
+        root_inode = self.walk_capture(root)
+        # signal the operating system hook
+        # that the FS has been inserted
+        # and send it the root_inode to build the relationship
+        self.context.trigger('filesystem_inserted', root=root_inode)
 
     def walk_count(self, node):
         self.total_entries += 1

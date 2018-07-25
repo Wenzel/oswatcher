@@ -1,4 +1,18 @@
-from py2neo.ogm import GraphObject, Property, RelatedTo, RelatedFrom
+from py2neo.ogm import GraphObject, Property, RelatedTo
+
+class OS(GraphObject):
+
+    def __init__(self, name):
+        super().__init__()
+        self.name = name
+
+    # properties
+    name = Property()
+
+    # relationships
+    root_fileystem = RelatedTo("Inode")
+    syscalls = RelatedTo("Syscall")
+
 
 class Inode(GraphObject):
 
@@ -22,7 +36,6 @@ class Inode(GraphObject):
         self.size = stat['st_size']
 
 
-
     # properties
     name = Property()
     size = Property()
@@ -33,7 +46,7 @@ class Inode(GraphObject):
 
 
     # relationships
-    children = RelatedTo("Inode", "has_child")
+    children = RelatedTo("Inode")
 
 
 class Syscall(GraphObject):

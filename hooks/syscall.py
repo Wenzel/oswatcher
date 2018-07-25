@@ -71,7 +71,12 @@ class SyscallTableHook(Hook):
 
     def insert_db(self, sdt):
         self.logger.info('Inserting syscall table into database')
+        syscall_nodes = []
         for table_index, table in sdt:
             for index, name, address in table:
                 syscall = Syscall(self.TABLE_NAMES[table_index], index, name, address)
+                syscall_nodes.append(syscall)
                 self.graph.create(syscall)
+        # signal the operating system Hook that the syscalls has been
+        # inserted, to add the relationship
+        self.context.trigger('syscalls_inserted', syscalls=syscall_nodes)

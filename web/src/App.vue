@@ -1,7 +1,10 @@
 <template>
   <div class="container">
-    <nav class="navbar" role="navigation" aria-label="main navigation">
+    <nav class="navbar has-shadow" role="navigation" aria-label="main navigation">
       <div class="navbar-brand">
+        <a class="navbar-item" href="http://localhost:8080">
+          <img src="../assets/images/logo.png" width="120" height="40">
+        </a>
         <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false">
           <span aria-hidden="true"></span>
           <span aria-hidden="true"></span>
@@ -10,36 +13,40 @@
       </div>
       <div class="navbar-menu">
         <div class="navbar-start">
+          <router-link to="/">
+            <a class="navbar-item">
+              Home
+            </a>
+          </router-link>
         </div>
       </div>
     </nav>
-    <section class="hero">
-      <div class="hero-body">
-        <div class="container">
-          <h1 class="title">
-            Windows XP
-          </h1>
-          <h2 class="subtitle">
-            Professional SP3
-          </h2>
-        </div>
-      </div>
-    <SyscallTable/>
-    </section>
+    <router-view></router-view>
   </div>
 </template>
 
 <script>
-import SyscallTable from './components/SyscallTable.vue'
+import { ALL_OS_QUERY } from './constants/graphql.js'
 
 export default {
   data () {
     return {
+      OS: [],
+      columns: [
+        {
+          field: 'name',
+          label: 'OS'
+        }
+      ],
       loading: 0
     }
   },
   components: {
-    SyscallTable
+  },
+  apollo: {
+    OS: {
+      query: ALL_OS_QUERY
+    }
   }
 }
 </script>

@@ -1,6 +1,13 @@
 {
+    "configuration":
+    {
+        "delete": true
+    },
     "hooks":
     [
+        {
+            "name": "hooks.system.OperatingSystemHook"
+        },
         {
             "name": "hooks.filesystem.FilesystemHook",
             "configuration":
