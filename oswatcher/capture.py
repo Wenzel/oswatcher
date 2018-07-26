@@ -31,7 +31,7 @@ from see.context import QEMUContextFactory
 
 __SCRIPT_DIR = os.path.dirname(os.path.realpath(sys.argv[0]))
 DB_PASSWORD = "admin"
-DESKTOP_READY_WAIT_TIME = 60
+DESKTOP_READY_DELAY = 180
 
 
 class QEMUDomainContextFactory(QEMUContextFactory):
@@ -76,15 +76,17 @@ class QEMUDomainContextFactory(QEMUContextFactory):
         self.domain_tmp_f.close()
 
 
-def protocol(context):
+def protocol(environement):
+    context = environement.context
+    config = environement.configuration['configuration']
     context.trigger('protocol_start')
     context.trigger('offline')
     # start domain
     logging.info("Starting the domain")
     context.poweron()
     # wait until desktop is ready
-    logging.debug("Waiting %d seconds for desktop to be ready", DESKTOP_READY_WAIT_TIME)
-    time.sleep(DESKTOP_READY_WAIT_TIME)
+    logging.debug("Waiting %d seconds for desktop to be ready", config['desktop_ready_delay'])
+    time.sleep(config['desktop_ready_delay'])
     context.trigger('desktop_ready')
     # shutdown
     logging.info("Shutting down the domain")
@@ -113,6 +115,12 @@ def main(vm_name, uri, hooks_config_path, debug):
 
     if not 'configuration' in hooks_config:
         hooks_config['configuration'] = {}
+
+    # use default desktop ready delay if unset
+    if "desktop_ready_delay" not in hooks_config['configuration']:
+        hooks_config['configuration'] = DESKTOP_READY_DELAY
+
+
     # insert graph object into general hook configuration
     hooks_config['configuration']['graph'] = graph
     # insert vm_name object
@@ -123,9 +131,10 @@ def main(vm_name, uri, hooks_config_path, debug):
         logging.info("Deleting all nodes in graph database")
         graph.delete_all()
 
+
     with QEMUDomainContextFactory(vm_name, uri) as context:
         with Environment(context, hooks_config) as environment:
-            protocol(environment.context)
+            protocol(environment)
 
 
 if __name__ == '__main__':
