@@ -1,7 +1,8 @@
 {
     "configuration":
     {
-        "delete": true
+        "delete": true,
+        "desktop_ready_delay": 40
     },
     "hooks":
     [
