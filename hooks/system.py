@@ -19,6 +19,7 @@ class OperatingSystemHook(Hook):
         self.context.subscribe('protocol_start', self.build_operating_system)
         self.context.subscribe('filesystem_inserted', self.add_filesystem)
         self.context.subscribe('syscalls_inserted', self.add_syscalls)
+        self.context.subscribe('processes_inserted', self.add_processes)
         self.context.subscribe('protocol_end', self.insert_operating_system)
 
     def build_operating_system(self, event):
@@ -34,6 +35,13 @@ class OperatingSystemHook(Hook):
         syscalls = event.syscalls
         [self.os.syscalls.add(s) for s in syscalls]
 
+    def add_processes(self, event):
+        processes = event.processes
+        for p in processes:
+            self.os.processes.add(p)
+            p.owned_by.add(self.os)
+            self.graph.push(p)
+
     def insert_operating_system(self, event):
         logging.info('Inserting OS node %s', self.domain_name)
-        self.graph.create(self.os)
+        self.graph.push(self.os)

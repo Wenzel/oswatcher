@@ -35,3 +35,20 @@ export const ALL_SYSCALLS_QUERY = gql`
     }
   }
 `
+
+export const ALL_PROCESSES_QUERY = gql`
+  query AllProcessesQuery($os_name: String!) {
+    Process(orderBy: pid_asc) {
+      process_addr
+      name
+      pid
+      ppid
+      thread_count
+      handle_count
+      wow64
+      ownedBy(name: $os_name) {
+        name
+      }
+    }
+  }
+`

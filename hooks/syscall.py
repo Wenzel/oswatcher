@@ -76,7 +76,7 @@ class SyscallTableHook(Hook):
             for index, name, address in table:
                 syscall = Syscall(self.TABLE_NAMES[table_index], index, name, address)
                 syscall_nodes.append(syscall)
-                self.graph.create(syscall)
+                self.graph.push(syscall)
         # signal the operating system Hook that the syscalls has been
         # inserted, to add the relationship
         self.context.trigger('syscalls_inserted', syscalls=syscall_nodes)

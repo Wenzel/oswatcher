@@ -1,4 +1,4 @@
-from py2neo.ogm import GraphObject, Property, RelatedTo
+from py2neo.ogm import GraphObject, Property, RelatedTo, RelatedFrom
 
 class OS(GraphObject):
 
@@ -12,6 +12,7 @@ class OS(GraphObject):
     # relationships
     root_fileystem = RelatedTo("Inode")
     syscalls = RelatedTo("Syscall")
+    processes = RelatedTo("Process", "OWNS_PROCESS")
 
 
 class Inode(GraphObject):
@@ -63,3 +64,27 @@ class Syscall(GraphObject):
     index = Property()
     name = Property()
     address = Property()
+
+class Process(GraphObject):
+
+    def __init__(self, process_addr, name, pid, ppid, thread_count,
+                 handle_count, wow64):
+        super().__init__()
+        self.process_addr = process_addr
+        self.name = name
+        self.pid = pid
+        self.ppid = ppid
+        self.thread_count = thread_count
+        self.handle_count = handle_count
+        self.wow64 = wow64
+
+    # properties
+    process_addr = Property()
+    name = Property()
+    pid = Property()
+    ppid = Property()
+    thread_count = Property()
+    handle_count = Property()
+    wow64 = Property()
+
+    owned_by = RelatedTo("OS", "OWNED_BY")
