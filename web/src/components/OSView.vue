@@ -9,21 +9,25 @@
         </div>
       </div>
     </section>
+    <ProcessList :os="OS[0]"/>
   </div>
 </template>
 
 <script>
+import ProcessList from '@/components/ProcessList.vue'
 import { OS_FOR_ID_QUERY } from '@/constants/graphql.js'
 
 export default {
   data () {
     return {
       OS: [],
+      Process: [],
       os_id: parseInt(this.$route.params.id),
       loading: 0
     }
   },
   components: {
+    ProcessList
   },
   apollo: {
     OS: {
