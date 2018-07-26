@@ -130,6 +130,8 @@ def main(vm_name, uri, hooks_config_path, debug):
     if "delete" in hooks_config['configuration']:
         logging.info("Deleting all nodes in graph database")
         graph.delete_all()
+        # reset GraphQL IDL
+        graph.run("CALL graphql.idl(null)")
 
 
     with QEMUDomainContextFactory(vm_name, uri) as context:
