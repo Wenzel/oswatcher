@@ -51,7 +51,11 @@ class ProcessListHook(Hook):
                 process_entry['pid'] = e_data['_EPROCESS']['Cybox']['PID']
                 process_entry['ppid'] = e_data['_EPROCESS']['Cybox']['Parent_PID']
                 process_entry['thread_count'] = e_data['thread_count']
+                if isinstance(process_entry['thread_count'], dict):
+                    process_entry['thread_count'] = False
                 process_entry['handle_count'] = e_data['handle_count']
+                if isinstance(process_entry['handle_count'], dict):
+                    process_entry['handle_count'] = False
                 process_entry['wow64'] = e_data['wow64']
                 self.logger.debug('Found process %s', process_entry)
                 processes.append(process_entry)
