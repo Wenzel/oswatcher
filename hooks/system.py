@@ -32,8 +32,11 @@ class OperatingSystemHook(Hook):
 
     def add_syscalls(self, event):
         logging.info('Adding syscalls to OS node')
-        syscalls = event.syscalls
-        [self.os.syscalls.add(s) for s in syscalls]
+        systables_nodes = event.tables
+        for t in systables_nodes:
+            self.os.syscall_tables.add(t)
+            t.owned_by.add(self.os)
+            self.graph.push(t)
 
     def add_processes(self, event):
         logging.info('Adding processes to OS node')

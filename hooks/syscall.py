@@ -4,7 +4,7 @@ import re
 from io import StringIO
 
 # local
-from oswatcher.model import Syscall
+from oswatcher.model import SyscallTable, Syscall
 
 # 3rd
 from see import Hook
@@ -71,12 +71,17 @@ class SyscallTableHook(Hook):
 
     def insert_db(self, sdt):
         self.logger.info('Inserting syscall table into database')
-        syscall_nodes = []
+        systable_node_list = []
         for table_index, table in sdt:
+            systable_node = SyscallTable(table_index, self.TABLE_NAMES[table_index])
             for index, name, address in table:
-                syscall = Syscall(self.TABLE_NAMES[table_index], index, name, address)
-                syscall_nodes.append(syscall)
-                self.graph.push(syscall)
+                syscall_node = Syscall(index, name, address)
+                systable_node.syscalls.add(syscall_node)
+                syscall_node.owned_by.add(systable_node)
+                self.graph.push(syscall_node)
+
+                systable_node_list.append(systable_node)
+            self.graph.push(systable_node)
         # signal the operating system Hook that the syscalls has been
         # inserted, to add the relationship
-        self.context.trigger('syscalls_inserted', syscalls=syscall_nodes)
+        self.context.trigger('syscalls_inserted', tables=systable_node_list)
