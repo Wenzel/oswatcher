@@ -25,13 +25,27 @@ export const ALL_INODES_QUERY = gql`
   }
 `
 
+export const ALL_SYSCALL_TABLES_QUERY = gql`
+  query AllSyscallTablesQuery($os_name: String!) {
+    SyscallTable {
+      index
+      name
+      ownedBy(name: $os_name) {
+        name
+      }
+    }
+  }
+`
+
 export const ALL_SYSCALLS_QUERY = gql`
-  query AllSyscallQuery {
-    Syscall {
-      table
+  query AllSyscallQuery($table_index: Long!) {
+    Syscall(orderBy: index_asc) {
       index
       name
       address
+      ownedBy(index: $table_index) {
+        name
+      }
     }
   }
 `
