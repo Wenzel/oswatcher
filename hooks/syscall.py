@@ -80,8 +80,8 @@ class SyscallTableHook(Hook):
                 syscall_node.owned_by.add(systable_node)
                 self.graph.push(syscall_node)
 
-                systable_node_list.append(systable_node)
             self.graph.push(systable_node)
+            systable_node_list.append(systable_node)
         # signal the operating system Hook that the syscalls has been
         # inserted, to add the relationship
         self.context.trigger('syscalls_inserted', tables=systable_node_list)
