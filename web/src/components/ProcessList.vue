@@ -15,7 +15,7 @@
     <b-table :data="Process"
                   :paginated="isPaginated"
                   :per-page="perPage"
-                  >
+                  :loading="loading">
                   <template slot-scope="props">
                     <b-table-column field="process_addr" label="_EPROCESS">
                       {{ props.row.process_addr }}
