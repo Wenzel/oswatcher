@@ -21,7 +21,7 @@
             }
         },
         {
-            "name": "hooks.memdump.MemoryDumpHook"
+            "name": "hooks.memory.MemoryDumpHook"
         },
         {
             "name": "hooks.syscall.SyscallTableHook"

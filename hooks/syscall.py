@@ -22,22 +22,11 @@ class SyscallTableHook(Hook):
         super().__init__(parameters)
         # config
         self.graph = self.configuration['graph']
-        self.context.subscribe('memory_dumped', self.extract_syscall_table)
+        self.context.subscribe('rekall_session', self.extract_syscall_table)
 
     def extract_syscall_table(self, event):
         self.logger.info('Extracting the syscall table')
-        memdump_path = event.memdump_path
-        # build rekall session
-        s = session.Session(
-            filename=memdump_path,
-            autodetect=["rsds"],
-            logger=self.logger,
-            autodetect_build_local='none',
-            format='data',
-            profile_path=[
-                "http://profiles.rekall-forensic.com"
-        ])
-
+        s = event.session
         output = StringIO()
         self.logger.debug('Running Rekall SSDT plugin')
         s.RunPlugin("ssdt", output=output)

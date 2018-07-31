@@ -6,6 +6,7 @@ from tempfile import NamedTemporaryFile, TemporaryDirectory
 # 3rd
 import libvirt
 from see import Hook
+from rekall import plugins, session
 
 
 class MemoryDumpHook(Hook):
@@ -13,6 +14,7 @@ class MemoryDumpHook(Hook):
     def __init__(self, parameters):
         super().__init__(parameters)
         self.context.subscribe('desktop_ready', self.dump_memory)
+        self.context.subscribe('memory_dumped', self.prepare_rekall_session)
 
     def dump_memory(self, event):
         # take temporary memory dump
@@ -35,3 +37,16 @@ class MemoryDumpHook(Hook):
                 self.context.domain.coreDumpWithFormat(ram_dump.name, dumpformat, flags)
                 # trigger event
                 self.context.trigger('memory_dumped', memdump_path=ram_dump.name)
+
+    def prepare_rekall_session(self, event):
+        memdump_path = event.memdump_path
+        s = session.Session(
+            filename=memdump_path,
+            autodetect=["rsds"],
+            logger=self.logger,
+            autodetect_build_local='none',
+            format='data',
+            profile_path=[
+                "http://profiles.rekall-forensic.com"
+        ])
+        self.context.trigger('rekall_session', session=s)
