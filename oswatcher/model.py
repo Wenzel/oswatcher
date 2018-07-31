@@ -11,7 +11,7 @@ class OS(GraphObject):
 
     # relationships
     root_fileystem = RelatedTo("Inode")
-    syscalls = RelatedTo("Syscall")
+    syscall_tables = RelatedTo("SyscallTable", "OWNS_SYSCALL_TABLE")
     processes = RelatedTo("Process", "OWNS_PROCESS")
 
 
@@ -50,11 +50,25 @@ class Inode(GraphObject):
     children = RelatedTo("Inode")
 
 
+class SyscallTable(GraphObject):
+
+    def __init__(self, index, name):
+        super().__init__()
+        self.index = index
+        self.name = name
+
+
+    # properties
+    index = Property()
+    name = Property()
+
+    syscalls = RelatedTo("Syscall", "OWNS_SYSCALL")
+    owned_by = RelatedTo("OS", "OWNED_BY")
+
 class Syscall(GraphObject):
 
-    def __init__(self, table, index, name, address):
+    def __init__(self, index, name, address):
         super().__init__()
-        self.table = table
         self.index = index
         self.name = name
         self.address = address
@@ -64,6 +78,9 @@ class Syscall(GraphObject):
     index = Property()
     name = Property()
     address = Property()
+
+    owned_by = RelatedTo("SyscallTable", "OWNED_BY")
+
 
 class Process(GraphObject):
 
