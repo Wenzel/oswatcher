@@ -15,7 +15,7 @@
     <b-table :data="Process"
                   :paginated="isPaginated"
                   :per-page="perPage"
-                  :loading="loading">
+                  :loading="isLoading">
                   <template slot-scope="props">
                     <b-table-column field="process_addr" label="_EPROCESS">
                       {{ props.row.process_addr }}
@@ -93,6 +93,11 @@ export default {
   props: [
     'os'
   ],
+  computed: {
+    isLoading: function () {
+      return Boolean(this.loading)
+    }
+  },
   apollo: {
     Process: {
       query: ALL_PROCESSES_QUERY,
