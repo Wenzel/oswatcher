@@ -18,8 +18,7 @@
     <b-table :data="Syscall" :columns="columns"
                   :paginated="isPaginated"
                   :per-page="perPage"
-                  :current-page.sync="currentPage"
-                  :loading="loading">
+                  :loading="isLoading">
     </b-table>
   </div>
 </template>
@@ -53,6 +52,11 @@ export default {
       perPage: 10
     }
   },
+  computed: {
+    isLoading: function () {
+      return Boolean(this.loading)
+    }
+  },
   props: [
     'os'
   ],
@@ -71,6 +75,15 @@ export default {
         return {
           table_index: this.table_index
         }
+      },
+      update (data) {
+        var result = []
+        for (var i = 0; i < data.Syscall.length; i++) {
+          if (data.Syscall[i].ownedBy != null) {
+            result.push(data.Syscall[i])
+          }
+        }
+        return result
       }
     }
   }
