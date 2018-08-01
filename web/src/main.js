@@ -13,6 +13,10 @@ import VueApollo from 'vue-apollo'
 import Buefy from 'buefy'
 import 'buefy/lib/buefy.css'
 
+// Material
+import VueMaterial from 'vue-material'
+import 'vue-material/dist/vue-material.css'
+
 Vue.config.productionTip = false
 
 const httpLink = new HttpLink({
@@ -47,6 +51,8 @@ const apolloProvider = new VueApollo({
 })
 
 Vue.use(Buefy)
+
+Vue.use(VueMaterial)
 
 /* eslint-disable no-new */
 new Vue({
