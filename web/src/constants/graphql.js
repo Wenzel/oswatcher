@@ -27,7 +27,7 @@ export const ALL_INODES_QUERY = gql`
 
 export const ALL_SYSCALL_TABLES_QUERY = gql`
   query AllSyscallTablesQuery($os_name: String!) {
-    SyscallTable {
+    SyscallTable(orderBy: name_asc) {
       index
       name
       ownedBy(name: $os_name) {
