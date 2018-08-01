@@ -6,10 +6,8 @@
         <option v-for="table in SyscallTable" :key="table.index" :value="table.index">{{ table.name }}</option>
       </b-select>
       <b-select v-model="perPage" :disabled="!isPaginated">
-        <option value="5">5 per page</option>
-        <option value="10">10 per page</option>
-        <option value="15">15 per page</option>
         <option value="20">20 per page</option>
+        <option value="100">100 per page</option>
       </b-select>
       <div class="control is-flex">
         <b-switch v-model="isPaginated">Paginated</b-switch>
@@ -36,7 +34,9 @@ export default {
         {
           field: 'index',
           label: 'Index',
-          numeric: true
+          numeric: true,
+          width: 90,
+          sortable: true
         },
         {
           field: 'name',
@@ -49,7 +49,7 @@ export default {
       ],
       loading: 0,
       isPaginated: true,
-      perPage: 10
+      perPage: 20
     }
   },
   computed: {
