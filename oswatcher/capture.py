@@ -120,11 +120,12 @@ def main(vm_name, uri, hooks_config_path, debug):
     if "desktop_ready_delay" not in hooks_config['configuration']:
         hooks_config['configuration'] = DESKTOP_READY_DELAY
 
-
     # insert graph object into general hook configuration
     hooks_config['configuration']['graph'] = graph
     # insert vm_name object
     hooks_config['configuration']['domain_name'] = vm_name
+    # insert debug flag
+    hooks_config['configuration']['debug'] = debug
 
     # delete entire graph ?
     if "delete" in hooks_config['configuration']:
