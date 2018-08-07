@@ -1,4 +1,5 @@
 # sys
+import logging
 import os
 import stat
 from tempfile import NamedTemporaryFile, TemporaryDirectory
@@ -6,13 +7,23 @@ from tempfile import NamedTemporaryFile, TemporaryDirectory
 # 3rd
 import libvirt
 from see import Hook
+# silence rekall output
+logger = logging.getLogger()
+log_level = logger.getEffectiveLevel()
+logger.setLevel(logging.CRITICAL)
 from rekall import plugins, session
+# restore our logging level
+logger.setLevel(log_level)
 
 
 class MemoryDumpHook(Hook):
 
     def __init__(self, parameters):
         super().__init__(parameters)
+        debug = self.configuration.get('debug', False)
+        if not debug:
+            # silence rekall output
+            logging.getLogger('rekall.1').setLevel(logging.CRITICAL)
         self.context.subscribe('desktop_ready', self.dump_memory)
         self.context.subscribe('memory_dumped', self.prepare_rekall_session)
 
@@ -43,7 +54,6 @@ class MemoryDumpHook(Hook):
         s = session.Session(
             filename=memdump_path,
             autodetect=["rsds"],
-            logger=self.logger,
             autodetect_build_local='none',
             format='data',
             profile_path=[
