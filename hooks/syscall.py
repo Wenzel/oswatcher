@@ -8,7 +8,6 @@ from oswatcher.model import SyscallTable, Syscall
 
 # 3rd
 from see import Hook
-from rekall import plugins, session
 
 
 class SyscallTableHook(Hook):
