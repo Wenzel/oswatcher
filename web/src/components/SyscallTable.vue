@@ -1,5 +1,5 @@
 <template>
-  <div class="container">
+  <section>
     <h1 class="title">Syscall Table</h1>
     <b-field grouped group-multiline>
       <b-select v-model="table_index" v-if="SyscallTable.length">
@@ -18,7 +18,7 @@
                   :per-page="perPage"
                   :loading="isLoading">
     </b-table>
-  </div>
+  </section>
 </template>
 
 <script>

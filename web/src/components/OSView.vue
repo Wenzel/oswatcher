@@ -1,39 +1,43 @@
 <template>
-  <div class="columns">
-    <div class="column is-2">
-      <aside class="menu">
-        <p class="menu-label">
-        Offline
-        </p>
-        <p class="menu-label">
-        Online
-        </p>
-        <ul class="menu-list">
-          <li>
-            <router-link to="#proclist">
-              Process List
-            </router-link>
-          </li>
-          <li>
-            <router-link to="#syscalltable">
-              Syscall Table
-            </router-link>
-          </li>
-        </ul>
-      </aside>
-    </div>
-    <div class="column">
-      <section class="hero">
-        <div class="hero-body">
-          <div class="container">
+  <div class="container">
+    <div class="columns">
+      <div class="column">
+        <section class="hero">
+          <div class="hero-body">
             <h1 class="title" v-if="OS.length">
               {{ OS[0].name }}
             </h1>
           </div>
-        </div>
-      </section>
-      <ProcessList :os="OS[0]" id="proclist"/>
-      <SyscallTable :os="OS[0]" id="syscalltable"/>
+        </section>
+        <ProcessList :os="OS[0]" id="proclist"/>
+        <SyscallTable :os="OS[0]" id="syscalltable"/>
+      </div>
+      <div class="column is-2">
+        <nav class="panel">
+          <p class="panel-heading">
+          Menu
+          </p>
+          <div class="panel-block">
+            <aside class="menu">
+              <p class="menu-label">
+              Online
+              </p>
+              <ul class="menu-list">
+                <li>
+                  <router-link to="#proclist">
+                    Process List
+                  </router-link>
+                </li>
+                <li>
+                  <router-link to="#syscalltable">
+                    Syscall Table
+                  </router-link>
+                </li>
+              </ul>
+            </aside>
+          </div>
+        </nav>
+      </div>
     </div>
   </div>
 </template>

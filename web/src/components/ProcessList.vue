@@ -1,5 +1,5 @@
 <template>
-  <div class="container">
+  <section>
     <h1 class="title">Process List</h1>
     <b-field grouped group-multiline>
       <b-select v-model="perPage" :disabled="!isPaginated">
@@ -45,7 +45,7 @@
       </b-table-column>
                   </template>
     </b-table>
-  </div>
+  </section>
 </template>
 
 <script>
