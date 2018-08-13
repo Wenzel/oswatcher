@@ -10,7 +10,7 @@ class OS(GraphObject):
     name = Property()
 
     # relationships
-    root_fileystem = RelatedTo("Inode")
+    root_fileystem = RelatedTo("Inode", "OWNS_FILESYSTEM")
     syscall_tables = RelatedTo("SyscallTable", "OWNS_SYSCALL_TABLE")
     processes = RelatedTo("Process", "OWNS_PROCESS")
 
@@ -47,7 +47,8 @@ class Inode(GraphObject):
 
 
     # relationships
-    children = RelatedTo("Inode")
+    children = RelatedTo("Inode", "HAS_CHILD")
+    owned_by = RelatedTo("OS", "OWNED_BY")
 
 
 class SyscallTable(GraphObject):
