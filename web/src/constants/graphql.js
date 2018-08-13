@@ -66,3 +66,27 @@ export const ALL_PROCESSES_QUERY = gql`
     }
   }
 `
+
+export const ROOT_INODE_QUERY = gql`
+  query RootInodeQuery($os_name: String!) {
+    OS(name: $os_name) {
+    name
+      ownsFilesystem {
+        _id
+        name
+      }
+    }
+  }
+`
+
+export const CHILD_INODES_QUERY = gql`
+  query ChildInodesQuery($parent: String!) {
+    Inode {
+    _id
+    name
+      hasChild(name: $parent) {
+        _id
+      }
+    }
+  }
+`

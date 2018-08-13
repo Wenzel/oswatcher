@@ -9,6 +9,7 @@
             </h1>
           </div>
         </section>
+        <Filesystem :os="OS[0]" id="filesystem"/>
         <ProcessList :os="OS[0]" id="proclist"/>
         <SyscallTable :os="OS[0]" id="syscalltable"/>
       </div>
@@ -43,6 +44,7 @@
 </template>
 
 <script>
+import Filesystem from '@/components/Filesystem.vue'
 import ProcessList from '@/components/ProcessList.vue'
 import SyscallTable from '@/components/SyscallTable.vue'
 import { OS_FOR_ID_QUERY } from '@/constants/graphql.js'
@@ -57,6 +59,7 @@ export default {
     }
   },
   components: {
+    Filesystem,
     ProcessList,
     SyscallTable
   },
@@ -74,4 +77,7 @@ export default {
 </script>
 
 <style>
+#filesystem {
+  height: 600px;
+}
 </style>

@@ -29,6 +29,8 @@ class OperatingSystemHook(Hook):
         logging.info('Adding root filesystem to OS node')
         root = event.root
         self.os.root_fileystem.add(root)
+        root.owned_by.add(self.os)
+        self.graph.push(root)
 
     def add_syscalls(self, event):
         logging.info('Adding syscalls to OS node')
