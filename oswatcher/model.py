@@ -1,4 +1,8 @@
+import stat
+from enum import Enum
+
 from py2neo.ogm import GraphObject, Property, RelatedTo, RelatedFrom
+from IPython import embed
 
 
 class OS(GraphObject):
@@ -14,6 +18,17 @@ class OS(GraphObject):
     root_fileystem = RelatedTo("Inode", "OWNS_FILESYSTEM")
     syscall_tables = RelatedTo("SyscallTable", "OWNS_SYSCALL_TABLE")
     processes = RelatedTo("Process", "OWNS_PROCESS")
+
+
+class InodeType(Enum):
+    DIR  = stat.S_IFDIR
+    CHR  = stat.S_IFCHR
+    BLK  = stat.S_IFBLK
+    REG  = stat.S_IFREG
+    FIFO = stat.S_IFIFO
+    LNK  = stat.S_IFLNK
+    SOCK = stat.S_IFSOCK
+    DOOR = stat.S_IFDOOR
 
 
 class Inode(GraphObject):
@@ -34,8 +49,10 @@ class Inode(GraphObject):
             self.sha512sum = guestfs.checksum('sha512', s_filepath)
 
         # l -> if symbolic link, returns info about the link itself
-        stat = guestfs.lstatns(s_filepath)
-        self.size = stat['st_size']
+        file_stat = guestfs.lstatns(s_filepath)
+        self.size = file_stat['st_size']
+        self.mode = stat.filemode(file_stat['st_mode'])
+        self.inode_type = InodeType(stat.S_IFMT(file_stat['st_mode'])).value
 
     # properties
     name = Property()
@@ -44,6 +61,7 @@ class Inode(GraphObject):
     sha1sum = Property()
     sha256sum = Property()
     sha512sum = Property()
+    inode_type = Property()
 
     # relationships
     children = RelatedTo("Inode", "HAS_CHILD")
