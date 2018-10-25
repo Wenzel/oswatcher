@@ -32,3 +32,10 @@ MATCH(n)
 RETURN(n)
 LIMIT 300;
 ~~~
+
+# Troubleshooting
+
+## libguestfs
+
+If `libguestfs` fails to initialize, you can use the `libguestfs-test-tool` to
+quickly understand the root cause of the failure.
