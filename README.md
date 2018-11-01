@@ -5,7 +5,7 @@ systems by making `diffs` between recognizable characteristics.
 
 The core of `OSWatcher` is to build a reference database about every OS
 releases, that is to be populated by an `extractor` in charge of capturing the
-various information that can be extracted from an installed operating system both online
+various information that can be extracted from an installed operating system, both online
 and offline, in a reproducible way.
 
 Offline:
@@ -41,8 +41,10 @@ Online:
 
 # Setup
 
-~~~ virtualenv --system-site-packages -p python3 venv source venv/bin/activate
-pip install -r requirements.txt ~~~
+~~~
+virtualenv --system-site-packages -p python3 venv source venv/bin/activate
+pip install -r requirements.txt
+~~~
 
 Note: We have to use `--system-site-packages` because `libguestfs` is not
 available on `pip`.
@@ -56,7 +58,9 @@ container.
 
 # Usage
 
-~~~ (venv) $ python -m oswatcher.capture <vm_name> hooks.json ~~~
+~~~
+(venv) $ python -m oswatcher.capture <vm_name> hooks.json
+~~~
 
 Example: ![Capturing ubuntu
 filesystem](https://user-images.githubusercontent.com/964610/47535862-14ddbb00-d8c6-11e8-88cd-efa5db339bb8.jpg)
@@ -66,7 +70,11 @@ neo4j](https://user-images.githubusercontent.com/964610/47535864-18714200-d8c6-1
 
 ## neo4j
 
-~~~ MATCH(n) RETURN(n) LIMIT 300; ~~~
+~~~
+MATCH(n)
+RETURN(n)
+LIMIT 300;
+~~~
 
 # Troubleshooting
 
