@@ -42,7 +42,8 @@ Online:
 # Setup
 
 ~~~
-virtualenv --system-site-packages -p python3 venv source venv/bin/activate
+virtualenv --system-site-packages -p python3 venv
+source venv/bin/activate
 pip install -r requirements.txt
 ~~~
 
