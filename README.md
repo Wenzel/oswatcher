@@ -2,6 +2,7 @@
 
 [![Join the chat at https://gitter.im/kvm-vmi/Lobby](https://badges.gitter.im/trailofbits/algo.svg)](https://gitter.im/oswatcher/Lobby)
 [![standard-readme compliant](https://img.shields.io/badge/readme%20style-standard-brightgreen.svg?style=flat-square)](https://github.com/RichardLitt/standard-readme)
+[![Build Status](https://travis-ci.org/Wenzel/oswatcher.svg?branch=master)](https://travis-ci.org/Wenzel/oswatcher)
 
 > Track the evolution of operating systems over time
 
