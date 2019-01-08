@@ -1,5 +1,6 @@
 import xml.etree.ElementTree as ET
 
+
 def get_hard_disk(domain):
     root = ET.fromstring(domain.XMLDesc())
     disk = root.find("./devices/disk[@type='file'][@device='disk']")
