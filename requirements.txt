@@ -2,4 +2,3 @@ docopt
 libvirt-python
 py2neo
 python-see
-rekall==1.7.2.rc1
