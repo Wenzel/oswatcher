@@ -58,5 +58,6 @@ class MemoryDumpHook(Hook):
             format='data',
             profile_path=[
                 "http://profiles.rekall-forensic.com"
-        ])
+            ]
+        )
         self.context.trigger('rekall_session', session=s)

@@ -1,5 +1,6 @@
 from py2neo.ogm import GraphObject, Property, RelatedTo, RelatedFrom
 
+
 class OS(GraphObject):
 
     def __init__(self, name):
@@ -36,7 +37,6 @@ class Inode(GraphObject):
         stat = guestfs.lstatns(s_filepath)
         self.size = stat['st_size']
 
-
     # properties
     name = Property()
     size = Property()
@@ -44,7 +44,6 @@ class Inode(GraphObject):
     sha1sum = Property()
     sha256sum = Property()
     sha512sum = Property()
-
 
     # relationships
     children = RelatedTo("Inode", "HAS_CHILD")
@@ -58,13 +57,13 @@ class SyscallTable(GraphObject):
         self.index = index
         self.name = name
 
-
     # properties
     index = Property()
     name = Property()
 
     syscalls = RelatedTo("Syscall", "OWNS_SYSCALL")
     owned_by = RelatedTo("OS", "OWNED_BY")
+
 
 class Syscall(GraphObject):
 

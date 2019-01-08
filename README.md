@@ -78,7 +78,7 @@ container.
 ## Usage
 
 ~~~
-(venv) $ python -m oswatcher.capture <vm_name> hooks.json
+(venv) $ python -m oswatcher <vm_name> hooks.json
 ~~~
 
 Example: ![Capturing ubuntu

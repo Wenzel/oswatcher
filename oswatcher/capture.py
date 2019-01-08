@@ -1,13 +1,3 @@
-#!/usr/bin/env python3
-
-"""
-Usage: capture.py [options] <vm_name> <plugins_configuration>
-
-Options:
-    -h --help                       Display this message
-    -d --debug                      Enable debug output
-    -c --connection=<URI>           Specify a libvirt URI [Default: qemu:///session]
-"""
 
 
 # sys
@@ -23,7 +13,6 @@ from oswatcher.utils import get_hard_disk
 
 # 3rd
 import libvirt
-from docopt import docopt
 from py2neo import Graph
 from see import Environment
 from see.context import QEMUContextFactory
@@ -48,7 +37,7 @@ class QEMUDomainContextFactory(QEMUContextFactory):
         qcow_path = get_hard_disk(domain)
         # storage path
         self.osw_storage_path = TemporaryDirectory(prefix="osw-instances-",
-                                              dir=gettempdir())
+                                                   dir=gettempdir())
 
         context_config = {
             "hypervisor": uri,
@@ -85,7 +74,8 @@ def protocol(environement):
     logging.info("Starting the domain")
     context.poweron()
     # wait until desktop is ready
-    logging.debug("Waiting %d seconds for desktop to be ready", config['desktop_ready_delay'])
+    logging.debug("Waiting %d seconds for desktop to be ready",
+                  config['desktop_ready_delay'])
     time.sleep(config['desktop_ready_delay'])
     context.trigger('desktop_ready')
     # shutdown
@@ -104,16 +94,20 @@ def init_logger(debug=False):
     logging.getLogger("neo4j.bolt").setLevel(logging.WARNING)
 
 
-def main(vm_name, uri, hooks_config_path, debug):
-    init_logger(debug)
+def main(args):
+    vm_name = args['<vm_name>']
+    uri = args['--connection']
+    debug = args['--debug']
+    hooks_config_path = args['<plugins_configuration>']
 
+    init_logger(debug)
     hooks_config = {}
     with open(hooks_config_path) as f:
         hooks_config = json.load(f)
     logging.info('connect to Neo4j DB')
     graph = Graph(password=DB_PASSWORD)
 
-    if not 'configuration' in hooks_config:
+    if 'configuration' not in hooks_config:
         hooks_config['configuration'] = {}
 
     # use default desktop ready delay if unset
@@ -134,16 +128,6 @@ def main(vm_name, uri, hooks_config_path, debug):
         # reset GraphQL IDL
         graph.run("CALL graphql.idl(null)")
 
-
     with QEMUDomainContextFactory(vm_name, uri) as context:
         with Environment(context, hooks_config) as environment:
             protocol(environment)
-
-
-if __name__ == '__main__':
-    args = docopt(__doc__)
-    vm_name = args['<vm_name>']
-    uri = args['--connection']
-    debug = args['--debug']
-    hooks_config_path = args['<plugins_configuration>']
-    main(vm_name, uri, hooks_config_path, debug)

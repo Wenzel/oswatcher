@@ -36,7 +36,7 @@ def main(args):
 
     # we should have one main filesystem
     root = roots[0]
-    mps = g.inspect_get_mountpoints (root)
+    mps = g.inspect_get_mountpoints(root)
     # mount filesystem
     logging.info('Mounting main filesystem')
     for mount_point, device in mps.items():
@@ -44,6 +44,7 @@ def main(args):
 
     # run IPython shell
     embed()
+
 
 if __name__ == '__main__':
     main(docopt(__doc__))

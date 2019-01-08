@@ -54,7 +54,7 @@ class ProcessListHook(Hook):
         process_nodes = []
         for p in processes:
             proc_node = Process(p['_EPROCESS'], p['name'], p['pid'], p['ppid'],
-                           p['thread_count'], p['handle_count'], p['wow64'])
+                                p['thread_count'], p['handle_count'], p['wow64'])
             self.graph.push(proc_node)
             process_nodes.append(proc_node)
         # signal the operating system Hook that the syscalls has been

@@ -64,10 +64,12 @@ def setup_storage_pool(con, pool_name, pool_path):
         pool.create()
     return pool
 
+
 def append_qcow(disk_image):
     if not disk_image.suffix == '.qcow2':
         return Path(str(disk_image) + '.qcow2')
     return disk_image
+
 
 def setup_domain(con, vm_name, pool, disk_image, pool_path):
     # check if domain is already defined
@@ -90,6 +92,7 @@ def setup_domain(con, vm_name, pool, disk_image, pool_path):
     else:
         logging.info('Domain %s already defined', vm_name)
     return domain
+
 
 def main(args):
     debug = args['--debug']

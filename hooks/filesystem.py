@@ -10,6 +10,7 @@ from oswatcher.model import Inode
 import guestfs
 from see import Hook
 
+
 class FilesystemHook(Hook):
 
     def __init__(self, parameters):
