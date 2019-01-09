@@ -3,12 +3,35 @@ import time
 from pathlib import Path
 
 # local
-from oswatcher.utils import get_hard_disk
 from oswatcher.model import Inode
 
 # 3rd
 import guestfs
 from see import Hook
+
+
+def guestfs_instance(func):
+    def wrapper(self, *args, **kwargs):
+        self.logger.info('Initializing libguestfs')
+        self.gfs = guestfs.GuestFS(python_return_dict=True)
+        # attach libvirt domain
+        self.gfs.add_libvirt_dom(self.context.domain, readonly=True)
+        self.logger.debug('Running libguestfs backend')
+        self.gfs.launch()
+        roots = self.gfs.inspect_os()
+        if len(roots) == 0:
+            raise RuntimeError('no operating system found')
+        # use main filesystem
+        root = roots[0]
+        mps = self.gfs.inspect_get_mountpoints(root)
+        self.logger.debug('Mounting filesystem')
+        for mount_point, device in mps.items():
+            self.gfs.mount_ro(device, mount_point)
+        func(self, *args, **kwargs)
+        # shutdown
+        self.gfs.umount_all()
+        self.gfs.shutdown()
+    return wrapper
 
 
 class FilesystemHook(Hook):
@@ -28,27 +51,8 @@ class FilesystemHook(Hook):
         self.time_last_update = 0
         self.context.subscribe('offline', self.capture_fs)
 
-    def init_libguestfs(self):
-        self.logger.info('Initializing libguestfs')
-        qcow_path = get_hard_disk(self.context.domain)
-        self.logger.debug('Hard disk path: %s', qcow_path)
-        self.gfs = guestfs.GuestFS(python_return_dict=True)
-        # attach drive
-        self.gfs.add_drive_opts(qcow_path, readonly=1)
-        self.logger.debug('Running libguestfs backend')
-        self.gfs.launch()
-        roots = self.gfs.inspect_os()
-        if len(roots) == 0:
-            raise RuntimeError('no operating system found')
-        # use main filesystem
-        root = roots[0]
-        mps = self.gfs.inspect_get_mountpoints(root)
-        self.logger.debug('Mounting filesystem')
-        for mount_point, device in mps.items():
-            self.gfs.mount_ro(device, mount_point)
-
+    @guestfs_instance
     def capture_fs(self, event):
-        self.init_libguestfs()
         # delete previous graph ?
         if self.delete:
             self.logger.info('Delete all nodes in graph')
