@@ -1,6 +1,7 @@
 # sys
 import time
 from pathlib import Path
+from contextlib import contextmanager
 
 # local
 from oswatcher.model import Inode
@@ -10,28 +11,30 @@ import guestfs
 from see import Hook
 
 
-def guestfs_instance(func):
-    def wrapper(self, *args, **kwargs):
-        self.logger.info('Initializing libguestfs')
-        self.gfs = guestfs.GuestFS(python_return_dict=True)
-        # attach libvirt domain
-        self.gfs.add_libvirt_dom(self.context.domain, readonly=True)
-        self.logger.debug('Running libguestfs backend')
-        self.gfs.launch()
-        roots = self.gfs.inspect_os()
-        if len(roots) == 0:
-            raise RuntimeError('no operating system found')
-        # use main filesystem
-        root = roots[0]
-        mps = self.gfs.inspect_get_mountpoints(root)
-        self.logger.debug('Mounting filesystem')
-        for mount_point, device in mps.items():
-            self.gfs.mount_ro(device, mount_point)
-        func(self, *args, **kwargs)
+@contextmanager
+def guestfs_instance(self):
+    self.logger.info('Initializing libguestfs')
+    self.gfs = guestfs.GuestFS(python_return_dict=True)
+    # attach libvirt domain
+    self.gfs.add_libvirt_dom(self.context.domain, readonly=True)
+    self.logger.debug('Running libguestfs backend')
+    self.gfs.launch()
+    roots = self.gfs.inspect_os()
+    if len(roots) == 0:
+        raise RuntimeError('no operating system found')
+    # use main filesystem
+    root = roots[0]
+    mps = self.gfs.inspect_get_mountpoints(root)
+    self.logger.debug('Mounting filesystem')
+    for mount_point, device in mps.items():
+        self.gfs.mount_ro(device, mount_point)
+    try:
+        yield self.gfs
+    except Exception as e:
         # shutdown
         self.gfs.umount_all()
         self.gfs.shutdown()
-    return wrapper
+        raise e
 
 
 class FilesystemHook(Hook):
@@ -51,23 +54,23 @@ class FilesystemHook(Hook):
         self.time_last_update = 0
         self.context.subscribe('offline', self.capture_fs)
 
-    @guestfs_instance
     def capture_fs(self, event):
-        # delete previous graph ?
-        if self.delete:
-            self.logger.info('Delete all nodes in graph')
-            self.graph.delete_all()
-        root = Path('/')
-        if self.enumerate:
-            self.logger.info('Enumerating entries')
-            self.walk_count(root)
-        self.logger.info('Capturing filesystem')
-        self.time_last_update = time.time()
-        root_inode = self.walk_capture(root)
-        # signal the operating system hook
-        # that the FS has been inserted
-        # and send it the root_inode to build the relationship
-        self.context.trigger('filesystem_inserted', root=root_inode)
+        with guestfs_instance(self) as gfs:
+            # delete previous graph ?
+            if self.delete:
+                self.logger.info('Delete all nodes in graph')
+                self.graph.delete_all()
+            root = Path('/')
+            if self.enumerate:
+                self.logger.info('Enumerating entries')
+                self.walk_count(root)
+            self.logger.info('Capturing filesystem')
+            self.time_last_update = time.time()
+            root_inode = self.walk_capture(root)
+            # signal the operating system hook
+            # that the FS has been inserted
+            # and send it the root_inode to build the relationship
+            self.context.trigger('filesystem_inserted', root=root_inode)
 
     def walk_count(self, node):
         self.total_entries += 1
