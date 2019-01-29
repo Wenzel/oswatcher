@@ -1,8 +1,17 @@
 import stat
+import subprocess
 from enum import Enum
+from contextlib import contextmanager
+from tempfile import NamedTemporaryFile
 
 from py2neo.ogm import GraphObject, Property, RelatedTo, RelatedFrom
 
+
+@contextmanager
+def guest_local_file(gfs, remote_file):
+    with NamedTemporaryFile() as temp:
+        gfs.download(remote_file, temp.name)
+        yield temp.name
 
 class OS(GraphObject):
 
@@ -53,6 +62,9 @@ class Inode(GraphObject):
         self.mode = stat.filemode(file_stat['st_mode'])
         self.inode_type = InodeType(stat.S_IFMT(file_stat['st_mode'])).value
         self.file_type = guestfs.file(s_filepath)
+        if InodeType(self.inode_type) == InodeType.REG:
+            with guest_local_file(guestfs, s_filepath) as local_file:
+                self.mime_type = subprocess.check_output(['file', '-bi', local_file]).decode().rstrip()
 
     # properties
     name = Property()
@@ -63,6 +75,7 @@ class Inode(GraphObject):
     sha512sum = Property()
     inode_type = Property()
     file_type = Property()
+    mime_type = Property()
 
     # relationships
     children = RelatedTo("Inode", "HAS_CHILD")
