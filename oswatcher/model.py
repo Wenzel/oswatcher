@@ -1,5 +1,6 @@
 import stat
 import subprocess
+import re
 from enum import Enum
 from contextlib import contextmanager
 from tempfile import NamedTemporaryFile
@@ -63,8 +64,35 @@ class Inode(GraphObject):
         self.inode_type = InodeType(stat.S_IFMT(file_stat['st_mode'])).value
         self.file_type = guestfs.file(s_filepath)
         if InodeType(self.inode_type) == InodeType.REG:
-            with guest_local_file(guestfs, s_filepath) as local_file:
-                self.mime_type = subprocess.check_output(['file', '-bi', local_file]).decode().rstrip()
+            self.mime_type = guestfs.command(['file', '-bi', s_filepath]).rstrip()
+            if re.match('.*application/x-(((pie-)?executable)|sharedlib).*', self.mime_type):
+                # apparently libguestfs raises a RuntimeError when
+                # running ldd on some binaries, for no clear reason
+                # catching the error and silently passing for now
+                try:
+                    ldd_output = [l.strip() for l in guestfs.command_lines(['ldd', s_filepath])]
+                except RuntimeError:
+                    print("{}: ldd failed ! (libguestfs buf ?)".format(s_filepath))
+                    pass
+                else:
+                    self.dynlibs = []
+                    for lib in ldd_output:
+                        lib_path = None
+                        m = re.match('(?P<lib_path>/.*) (.*)', lib)
+                        if m:
+                            lib_path = m.group('lib_path')
+                        m = re.match('.* => (?P<lib_path>/.*) (.*)', lib)
+                        if m:
+                            lib_path = m.group('lib_path')
+                        # linux-gate
+                        m = re.match('(?P<lib_path>.*) =>  (.*)', lib)
+                        if m:
+                            lib_path = m.group('lib_path')
+                        self.dynlibs.append(lib_path)
+
+            # if file needs to be downloaded on host temporarily
+            # with guest_local_file(guestfs, s_filepath) as local_file:
+
 
     # properties
     name = Property()
@@ -80,6 +108,7 @@ class Inode(GraphObject):
     # relationships
     children = RelatedTo("Inode", "HAS_CHILD")
     owned_by = RelatedTo("OS", "OWNED_BY")
+    dependencies = RelatedTo("Inode", "DYNLINK_WITH")
 
 
 class SyscallTable(GraphObject):
