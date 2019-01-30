@@ -25,7 +25,7 @@ DESKTOP_READY_DELAY = 180
 
 class QEMUDomainContextFactory(QEMUContextFactory):
 
-    def __init__(self, domain_name, uri="qemu:///system"):
+    def __init__(self, domain_name, uri):
         # generate context.json and domain.xml
         self.domain_tmp_f = NamedTemporaryFile(mode='w')
         con = libvirt.open(uri)
