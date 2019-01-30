@@ -99,7 +99,10 @@ class FilesystemHook(Hook):
     def update_log(self, node):
         delta = time.time() - self.time_last_update
         if delta > self.log_progress_delay:
-            perc = round(self.counter * 100 / self.total_entries, 1)
-            self.logger.info("[{} %] {}".format(perc, node))
+            if self.enumerate:
+                perc = round(self.counter * 100 / self.total_entries, 1)
+                self.logger.info("[{} %] {}".format(perc, node))
+            else:
+                self.logger.info(node)
             # reset
             self.time_last_update = time.time()
