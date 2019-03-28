@@ -31,10 +31,11 @@ def guestfs_instance(self):
     try:
         yield self.gfs
     except Exception as e:
+        raise e
+    finally:
         # shutdown
         self.gfs.umount_all()
         self.gfs.shutdown()
-        raise e
 
 
 class FilesystemHook(Hook):
@@ -91,7 +92,9 @@ class FilesystemHook(Hook):
             for entry in entries:
                 subnode_abs = node / entry
                 child_inode = self.walk_capture(subnode_abs)
+                child_inode.parent = inode
                 inode.children.add(child_inode)
+                self.graph.push(child_inode)
 
         self.graph.create(inode)
         return inode

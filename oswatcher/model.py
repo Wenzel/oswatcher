@@ -70,25 +70,28 @@ class Inode(GraphObject):
                 # running ldd on some binaries, for no clear reason
                 # catching the error and silently passing for now
                 try:
-                    ldd_output = [l.strip() for l in guestfs.command_lines(['ldd', s_filepath])]
+                    ldd_output = guestfs.command(['ldd', s_filepath])
                 except RuntimeError:
-                    print("{}: ldd failed ! (libguestfs buf ?)".format(s_filepath))
+                    print("{}: ldd failed !".format(s_filepath))
                     pass
                 else:
-                    self.dynlibs = []
-                    for lib in ldd_output:
-                        lib_path = None
-                        m = re.match('(?P<lib_path>/.*) (.*)', lib)
-                        if m:
-                            lib_path = m.group('lib_path')
-                        m = re.match('.* => (?P<lib_path>/.*) (.*)', lib)
-                        if m:
-                            lib_path = m.group('lib_path')
-                        # linux-gate
-                        m = re.match('(?P<lib_path>.*) =>  (.*)', lib)
-                        if m:
-                            lib_path = m.group('lib_path')
-                        self.dynlibs.append(lib_path)
+                    if not re.match('.*statically linked.*', ldd_output):
+                        self.dynlibs = []
+                        for lib in [l.strip() for l in ldd_output.splitlines()]:
+                            lib_path = None
+                            m = re.match('(?P<lib_path>/.*) (.*)', lib)
+                            if m:
+                                lib_path = m.group('lib_path')
+                            m = re.match('.* => (?P<lib_path>/.*) (.*)', lib)
+                            if m:
+                                lib_path = m.group('lib_path')
+                            # linux-gate
+                            m = re.match('(?P<lib_path>.*) =>.*', lib)
+                            if m:
+                                lib_path = m.group('lib_path')
+                            self.dynlibs.append(lib_path)
+                        # string, semi colon separated
+                        self.dyn_deps = ':'.join(self.dynlibs)
 
             # if file needs to be downloaded on host temporarily
             # with guest_local_file(guestfs, s_filepath) as local_file:
@@ -104,11 +107,11 @@ class Inode(GraphObject):
     inode_type = Property()
     file_type = Property()
     mime_type = Property()
-
+    dyn_deps = Property()
     # relationships
     children = RelatedTo("Inode", "HAS_CHILD")
+    parent = RelatedTo("Inode", "HAS_PARENT")
     owned_by = RelatedTo("OS", "OWNED_BY")
-    dependencies = RelatedTo("Inode", "DYNLINK_WITH")
 
 
 class SyscallTable(GraphObject):

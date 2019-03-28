@@ -12,10 +12,10 @@
 - [Requirements](#requirements)
 - [Install](#install)
 - [Usage](#usage)
- - [Troubleshooting](#troubleshooting)
- - [Maintainers](#maintainers)
- - [Contributing](#contributing)
- - [License](#license)
+- [Troubleshooting](#troubleshooting)
+- [Maintainers](#maintainers)
+- [Contributing](#contributing)
+- [License](#license)
 
 # Overview
 
