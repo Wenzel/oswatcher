@@ -92,6 +92,7 @@ def init_logger(debug=False):
     # suppress annoying log output
     logging.getLogger("httpstream").setLevel(logging.WARNING)
     logging.getLogger("neo4j.bolt").setLevel(logging.WARNING)
+    logging.getLogger("neobolt").setLevel(logging.WARNING)
 
 
 def main(args):
