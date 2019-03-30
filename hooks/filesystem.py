@@ -30,11 +30,11 @@ def guestfs_instance(self):
         self.gfs.mount_ro(device, mount_point)
     try:
         yield self.gfs
-    except Exception as e:
+    finally:
         # shutdown
+        self.logger.debug('shutdown libguestfs')
         self.gfs.umount_all()
         self.gfs.shutdown()
-        raise e
 
 
 class FilesystemHook(Hook):
