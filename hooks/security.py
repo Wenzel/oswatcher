@@ -35,6 +35,7 @@ class SecurityHook(Hook):
                 return string.lower() in ['yes', 'true', 'y', '1']
 
             # update inode
+            inode.checksec = True
             inode.relro = profile['relro']
             inode.canary = str2bool(profile['canary'])
             inode.nx = str2bool(profile['nx'])

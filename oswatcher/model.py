@@ -34,6 +34,9 @@ class Inode(GraphObject):
 
     def __init__(self, guestfs, filepath, checksums):
         super().__init__()
+        # default
+        self.checksec = False
+
         self.s_filepath = str(filepath)
         name = filepath.name
         # root ?
@@ -65,6 +68,7 @@ class Inode(GraphObject):
     file_type = Property()
     mime_type = Property()
     # checksec prop
+    checksec = Property()
     relro = Property()
     canary = Property()
     nx = Property()
