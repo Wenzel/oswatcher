@@ -20,12 +20,12 @@ class OS(GraphObject):
 
 
 class InodeType(Enum):
-    DIR  = stat.S_IFDIR
-    CHR  = stat.S_IFCHR
-    BLK  = stat.S_IFBLK
-    REG  = stat.S_IFREG
+    DIR = stat.S_IFDIR
+    CHR = stat.S_IFCHR
+    BLK = stat.S_IFBLK
+    REG = stat.S_IFREG
     FIFO = stat.S_IFIFO
-    LNK  = stat.S_IFLNK
+    LNK = stat.S_IFLNK
     SOCK = stat.S_IFSOCK
     DOOR = stat.S_IFDOOR
 
