@@ -16,34 +16,10 @@ from collections import Counter
 from docopt import docopt
 from py2neo import Graph
 
-from oswatcher.model import OS
+from oswatcher.model import OS, Inode
 
 DB_PASSWORD = "admin"
 
-
-def walk_filesystem(inode):
-    c = Counter()
-    if inode.checksec:
-        logging.debug('%s: %s', inode.name, inode.mime_type)
-        c['total'] += 1
-        if inode.relro:
-            c['relro'] += 1
-        if inode.canary:
-            c['canary'] += 1
-        if inode.nx:
-            c['nx'] += 1
-        if inode.rpath:
-            c['rpath'] += 1
-        if inode.runpath:
-            c['runpath'] += 1
-        if inode.symtables:
-            c['symtables'] += 1
-        if inode.fortify_source:
-            c['fortify_source'] += 1
-
-    for child in inode.children:
-        c += walk_filesystem(child)
-    return c
 
 def init_logger(debug=False):
     logging_level = logging.INFO
@@ -68,14 +44,32 @@ def main(args):
         for os in OS.match(graph):
             logging.info('⭢ %s', os.name)
         return 1
-    root = list(os.root_fileystem)[0]
-    counter = walk_filesystem(root)
+    inode_checksec_list = Inode.match(graph).where(checksec=True)
+    c = Counter()
+    for inode in inode_checksec_list:
+        logging.debug('%s: %s', inode.name, inode.mime_type)
+        c['total'] += 1
+        if inode.relro:
+            c['relro'] += 1
+        if inode.canary:
+            c['canary'] += 1
+        if inode.nx:
+            c['nx'] += 1
+        if inode.rpath:
+            c['rpath'] += 1
+        if inode.runpath:
+            c['runpath'] += 1
+        if inode.symtables:
+            c['symtables'] += 1
+        if inode.fortify_source:
+            c['fortify_source'] += 1
+
     logging.info('Results for %s', os_name)
-    logging.info('Total binaries: %d', counter['total'])
+    logging.info('Total binaries: %d', c['total'])
     for feature in ['relro', 'canary', 'nx', 'rpath', 'runpath', 'symtables', 'fortify_source']:
-        logging.info('%s: %.1f%%', feature, counter[feature] * 100 / counter['total'])
+        logging.info('%s: %.1f%%', feature, c[feature] * 100 / c['total'])
 
-
-args = docopt(__doc__)
-retcode = main(args)
-sys.exit(retcode)
+if __name__ == '__main__':
+    args = docopt(__doc__)
+    retcode = main(args)
+    sys.exit(retcode)
