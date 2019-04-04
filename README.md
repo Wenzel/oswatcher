@@ -78,6 +78,8 @@ container.
 
 ## Usage
 
+The VM name will be searched via `Libvirt`.
+
 ~~~
 (venv) $ python -m oswatcher <vm_name> hooks.json
 ~~~
