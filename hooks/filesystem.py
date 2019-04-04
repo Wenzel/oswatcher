@@ -1,10 +1,12 @@
 # sys
 import time
+import subprocess
+from tempfile import NamedTemporaryFile
 from pathlib import Path
 from contextlib import contextmanager
 
 # local
-from oswatcher.model import Inode
+from oswatcher.model import Inode, InodeType
 
 # 3rd
 import guestfs
@@ -37,6 +39,13 @@ def guestfs_instance(self):
         self.gfs.shutdown()
 
 
+@contextmanager
+def guest_local_file(gfs, remote_file):
+    with NamedTemporaryFile() as temp:
+        gfs.download(remote_file, temp.name)
+        yield temp.name
+
+
 class FilesystemHook(Hook):
 
     def __init__(self, parameters):
@@ -49,10 +58,12 @@ class FilesystemHook(Hook):
         self.log_progress_delay = int(self.configuration.get('log_progress_delay', 0))
         self.inode_checksums = self.configuration.get('inode_checksums', False)
 
+        self.gfs = None
         self.counter = 0
         self.total_entries = 0
         self.time_last_update = 0
         self.context.subscribe('offline', self.capture_fs)
+        self.context.subscribe('filesystem_new_file', self.process_new_file)
 
     def capture_fs(self, event):
         with guestfs_instance(self) as gfs:
@@ -85,16 +96,29 @@ class FilesystemHook(Hook):
         # logging the progress ?
         if self.log_progress:
             self.update_log(node)
+        # process current node
         inode = Inode(self.gfs, node, self.inode_checksums)
+        # download and execute trigger on local file
+        if InodeType(inode.inode_type) == InodeType.REG:
+            with guest_local_file(self.gfs, str(node)) as local_file:
+                self.context.trigger('filesystem_new_file', filepath=local_file, inode=inode)
+        # walk
         if self.gfs.is_dir(str(node)):
             entries = self.gfs.ls(str(node))
             for entry in entries:
                 subnode_abs = node / entry
                 child_inode = self.walk_capture(subnode_abs)
                 inode.children.add(child_inode)
-
+        # update graph inode
         self.graph.create(inode)
         return inode
+
+    def process_new_file(self, event):
+        filepath = event.filepath
+        inode = event.inode
+        # determine MIME type and update inode
+        inode.mime_type = subprocess.check_output(['file', '-bi', filepath]).decode().rstrip()
+        self.context.trigger('filesystem_new_file_mime', filepath=filepath, inode=inode, mime=inode.mime_type)
 
     def update_log(self, node):
         delta = time.time() - self.time_last_update

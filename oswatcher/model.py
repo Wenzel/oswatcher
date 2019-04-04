@@ -1,17 +1,8 @@
 import stat
-import subprocess
 from enum import Enum
-from contextlib import contextmanager
-from tempfile import NamedTemporaryFile
 
-from py2neo.ogm import GraphObject, Property, RelatedTo, RelatedFrom
+from py2neo.ogm import GraphObject, Property, RelatedTo
 
-
-@contextmanager
-def guest_local_file(gfs, remote_file):
-    with NamedTemporaryFile() as temp:
-        gfs.download(remote_file, temp.name)
-        yield temp.name
 
 class OS(GraphObject):
 
@@ -29,12 +20,12 @@ class OS(GraphObject):
 
 
 class InodeType(Enum):
-    DIR  = stat.S_IFDIR
-    CHR  = stat.S_IFCHR
-    BLK  = stat.S_IFBLK
-    REG  = stat.S_IFREG
+    DIR = stat.S_IFDIR
+    CHR = stat.S_IFCHR
+    BLK = stat.S_IFBLK
+    REG = stat.S_IFREG
     FIFO = stat.S_IFIFO
-    LNK  = stat.S_IFLNK
+    LNK = stat.S_IFLNK
     SOCK = stat.S_IFSOCK
     DOOR = stat.S_IFDOOR
 
@@ -43,28 +34,28 @@ class Inode(GraphObject):
 
     def __init__(self, guestfs, filepath, checksums):
         super().__init__()
-        s_filepath = str(filepath)
+        # default
+        self.checksec = False
+
+        self.s_filepath = str(filepath)
         name = filepath.name
         # root ?
         if not name:
             name = filepath.anchor
         self.name = name
-        if guestfs.is_file(s_filepath) and checksums:
+        if guestfs.is_file(self.s_filepath) and checksums:
             # checksums
-            self.md5sum = guestfs.checksum('md5', s_filepath)
-            self.sha1sum = guestfs.checksum('sha1', s_filepath)
-            self.sha256sum = guestfs.checksum('sha256', s_filepath)
-            self.sha512sum = guestfs.checksum('sha512', s_filepath)
+            self.md5sum = guestfs.checksum('md5', self.s_filepath)
+            self.sha1sum = guestfs.checksum('sha1', self.s_filepath)
+            self.sha256sum = guestfs.checksum('sha256', self.s_filepath)
+            self.sha512sum = guestfs.checksum('sha512', self.s_filepath)
 
         # l -> if symbolic link, returns info about the link itself
-        file_stat = guestfs.lstatns(s_filepath)
+        file_stat = guestfs.lstatns(self.s_filepath)
         self.size = file_stat['st_size']
         self.mode = stat.filemode(file_stat['st_mode'])
         self.inode_type = InodeType(stat.S_IFMT(file_stat['st_mode'])).value
-        self.file_type = guestfs.file(s_filepath)
-        if InodeType(self.inode_type) == InodeType.REG:
-            with guest_local_file(guestfs, s_filepath) as local_file:
-                self.mime_type = subprocess.check_output(['file', '-bi', local_file]).decode().rstrip()
+        self.file_type = guestfs.file(self.s_filepath)
 
     # properties
     name = Property()
@@ -76,6 +67,18 @@ class Inode(GraphObject):
     inode_type = Property()
     file_type = Property()
     mime_type = Property()
+    # checksec prop
+    checksec = Property()
+    relro = Property()
+    canary = Property()
+    nx = Property()
+    pie = Property()
+    rpath = Property()
+    runpath = Property()
+    symtables = Property()
+    fortify_source = Property()
+    fortified = Property()
+    fortifyable = Property()
 
     # relationships
     children = RelatedTo("Inode", "HAS_CHILD")
