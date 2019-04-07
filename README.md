@@ -53,12 +53,32 @@ Online:
 
 # Requirements
 
-- `Docker`
-- `libguestfs`
+- [`Docker`](https://www.docker.com/)
 - `python3`
 - `virtualenv`
+- [`libguestfs`](http://libguestfs.org/)
 
 ## Install
+
+1. Clone repo and submodules
+
+~~~
+git clone https://github.com/Wenzel/oswatcher.git
+cd oswatcher
+git submodule update --init
+~~~
+
+2. Install system dependencies
+
+*For `Docker` please refer to your distribution*
+
+On `Ubuntu 18.04`
+
+~~~
+sudo apt-get install virtualenv python3-virtualenv libguestfs0 libguestfs-dev python3-guestfs
+~~~
+
+3. Create virtualenv
 
 ~~~
 virtualenv --system-site-packages -p python3 venv
