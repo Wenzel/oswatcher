@@ -19,6 +19,9 @@
                 "log_progress_delay": 10,
                 "inode_checksums": false
             }
+        },
+        {
+            "name": "hooks.security.SecurityHook"
         }
     ]
 }
