@@ -36,7 +36,7 @@ class SecurityHook(Hook):
 
             # update inode
             inode.checksec = True
-            inode.relro = profile['relro']
+            inode.relro = True if profile['relro'] in ["full", "partial"] else False
             inode.canary = str2bool(profile['canary'])
             inode.nx = str2bool(profile['nx'])
             inode.pie = profile['pie']
