@@ -13,13 +13,16 @@ import sys
 import logging
 from collections import Counter
 
+import matplotlib.pyplot as plt
+import seaborn as sns
+import pandas as pd
 from docopt import docopt
 from py2neo import Graph
 
 from oswatcher.model import OS
 
 DB_PASSWORD = "admin"
-
+PROTECTIONS = ['relro', 'canary', 'nx', 'rpath', 'runpath', 'symtables', 'fortify_source']
 
 def init_logger(debug=False):
     logging_level = logging.INFO
@@ -70,8 +73,21 @@ def main(args):
 
     logging.info('Results for %s', os.name)
     logging.info('Total binaries: %d', c['total'])
-    for feature in ['relro', 'canary', 'nx', 'rpath', 'runpath', 'symtables', 'fortify_source']:
+    for feature in PROTECTIONS:
         logging.info('%s: %.1f%%', feature, c[feature] * 100 / c['total'])
+
+    sns.set_style('whitegrid')
+
+    per_data = []
+    for feature in PROTECTIONS:
+        value = c[feature] * 100 / c['total']
+        per_data.append(value)
+    # initialize list of lists
+    df = pd.DataFrame({'Protections': PROTECTIONS, 'Percentage': per_data})
+    ax = sns.barplot(x="Protections", y="Percentage", data=df)
+    ax.set_title('{} binary security'.format(os.name))
+    # show plot
+    plt.show()
 
 if __name__ == '__main__':
     args = docopt(__doc__)
