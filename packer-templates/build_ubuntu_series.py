@@ -6,11 +6,19 @@ Usage: script.py [options] <start> <end>
 Options:
     -h --help                       Display this message
     -d --debug                      Enable debug output
+    -f --flavor=FLAVOR              Specify Ubuntu flavor (server, desktop...) [Default: server]
+    -a --arch=ARCH                  Specify architecture (i386, amd64...) [Default: amd64]
 """
 
 
 import logging
 import re
+import json
+import subprocess
+import shutil
+import os
+from pathlib import Path
+from tempfile import NamedTemporaryFile
 from datetime import datetime
 
 import requests
@@ -19,7 +27,6 @@ from docopt import docopt
 UBUNTU_FIRST_RELEASE_MAJOR = 4
 UBUNTU_FIRST_RELEASE_MINOR = 10
 UBUNTU_OLD_RELEASE_URL = 'http://old-releases.ubuntu.com/releases'
-UBUNTU_RECENT_RELEASE_URL = 'http://releases.ubuntu.com'
 
 
 def is_url_up(url):
@@ -73,18 +80,11 @@ def gen_dir_urls(start, end):
         url += '.0/'
         if is_url_up(url):
             valid_url = url
-        # maybe it's a recent release
-        url = UBUNTU_RECENT_RELEASE_URL + '/' + release_str
-        if is_url_up(url):
-            valid_url = url
-        # try with a 0
-        url += '.0/'
-        if is_url_up(url):
-            valid_url = url
         if valid_url is None:
             logging.warning('Unable to generate valid URL for %s', release_str)
         else:
-            yield valid_url
+            yield (release_str, valid_url)
+
 
 def init_logger(debug=False):
     logging_level = logging.INFO
@@ -93,18 +93,56 @@ def init_logger(debug=False):
     logging.basicConfig(level=logging_level)
     logging.getLogger('urllib3').setLevel(logging.WARNING)
 
+
 def main(args):
-    print(args)
-    init_logger(args['--debug'])
+    debug = args['--debug']
+    init_logger(debug)
     start = args['<start>']
     end = args['<end>']
+    flavor = args['--flavor']
+    arch = args['--arch']
     # validate args
     for release_nb in [start, end]:
         if not re.match(r'\d+\.\d+', release_nb):
             raise RuntimeError('argument invalid. must be a release number (like 14.04), got %s', release_nb)
-    for dir_url in gen_dir_urls(start, end):
-        logging.info('URL : %s', dir_url)
-
+    build_dir = Path(__file__).absolute().parent / 'build_output'
+    logging.info('Creating build directory: %s', str(build_dir))
+    os.makedirs(str(build_dir), exist_ok=True)
+    for version, dir_url in gen_dir_urls(start, end):
+        logging.info('Building Ubuntu %s', version)
+        logging.debug('URL : %s', dir_url)
+        with NamedTemporaryFile(mode='w') as tmp_varfile:
+            varfile = {
+                'vm_name': 'ubuntu-{}-{}-{}.qcow2'.format(version, flavor, arch),
+                'cpus': '1',
+                'disk_size': '65536',
+                'iso_checksum_url': '{}/SHA256SUMS'.format(dir_url),
+                'iso_checksum_type': 'sha256',
+                'iso_url': '{}/ubuntu-{}-{}-{}.iso'.format(dir_url, version, flavor, arch),
+                'memory': '512',
+                'preseed': 'ubuntu/preseed.cfg',
+                'version': '1'
+            }
+            json.dump(varfile, tmp_varfile)
+            tmp_varfile.flush()
+            # build
+            template = Path(__file__).resolve().parent / 'ubuntu.json'
+            cmdline = ['packer', 'build', '-var-file', tmp_varfile.name, str(template)]
+            output_qemu = Path(__file__).resolve().parent / 'output-qemu'
+            try:
+                logging.debug('Running: %s', cmdline)
+                subprocess.run(cmdline, check=True)
+            except subprocess.CalledProcessError:
+                logging.error('Packer build failed !')
+            else:
+                src = output_qemu / varfile['vm_name']
+                dst = build_dir / varfile['vm_name']
+                # move build artifact
+                logging.info('Moving build artifact %s', str(src))
+                shutil.move(str(src), str(dst))
+            finally:
+                # ensure output-qemu is removed for next build
+                shutil.rmtree(str(output_qemu), ignore_errors=True)
 
 if __name__ == '__main__':
     args = docopt(__doc__)
