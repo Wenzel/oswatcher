@@ -131,14 +131,17 @@ def main(args):
             output_qemu = Path(__file__).resolve().parent / 'output-qemu'
             try:
                 logging.debug('Running: %s', cmdline)
-                subprocess.run(cmdline, check=True)
+                stdout = subprocess.DEVNULL
+                if debug:
+                    stdout = None
+                subprocess.run(cmdline, check=True, stdout=stdout)
             except subprocess.CalledProcessError:
                 logging.error('Packer build failed !')
             else:
+                logging.info('build artifact %s', varfile['vm_name'])
                 src = output_qemu / varfile['vm_name']
                 dst = build_dir / varfile['vm_name']
                 # move build artifact
-                logging.info('Moving build artifact %s', str(src))
                 shutil.move(str(src), str(dst))
             finally:
                 # ensure output-qemu is removed for next build
