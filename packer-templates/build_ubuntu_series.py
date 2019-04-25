@@ -8,6 +8,7 @@ Options:
     -d --debug                      Enable debug output
     -f --flavor=FLAVOR              Specify Ubuntu flavor (server, desktop...) [Default: server]
     -a --arch=ARCH                  Specify architecture (i386, amd64...) [Default: amd64]
+    -c --cpus=CPUS                  Specify the number of cpus to use for QEMU [Default: 2]
 """
 
 
@@ -27,11 +28,13 @@ from docopt import docopt
 UBUNTU_FIRST_RELEASE_MAJOR = 4
 UBUNTU_FIRST_RELEASE_MINOR = 10
 UBUNTU_OLD_RELEASE_URL = 'http://old-releases.ubuntu.com/releases'
+UBUNTU_RELEASE_URL = 'http://releases.ubuntu.com'
 
 
 def is_url_up(url):
     logging.debug('Checking for %s', url)
     return True if requests.get(url).status_code == 200 else False
+
 
 def gen_ubuntu_releases(start, end):
     # gen list of all stable version of ubuntu
@@ -67,6 +70,7 @@ def gen_ubuntu_releases(start, end):
                         continue
                 yield (major, minor)
 
+
 def gen_dir_urls(start, end):
     for major, minor in gen_ubuntu_releases(start, end):
         valid_url = None
@@ -77,9 +81,18 @@ def gen_dir_urls(start, end):
             valid_url = url
         # sometimes you need a .0
         # like for 10.04.0
-        url += '.0/'
-        if is_url_up(url):
+        url += '.0'
+        if valid_url is None and is_url_up(url):
             valid_url = url
+        # recent release ?
+        url = UBUNTU_RELEASE_URL + '/' + release_str
+        if valid_url is None and is_url_up(url):
+            valid_url = url
+        # test append .0
+        url += '.0'
+        if valid_url is None and is_url_up(url):
+            valid_url = url
+
         if valid_url is None:
             logging.warning('Unable to generate valid URL for %s', release_str)
         else:
@@ -101,6 +114,7 @@ def main(args):
     end = args['<end>']
     flavor = args['--flavor']
     arch = args['--arch']
+    cpus = args['--cpus']
     # validate args
     for release_nb in [start, end]:
         if not re.match(r'\d+\.\d+', release_nb):
@@ -114,12 +128,12 @@ def main(args):
         with NamedTemporaryFile(mode='w') as tmp_varfile:
             varfile = {
                 'vm_name': 'ubuntu-{}-{}-{}.qcow2'.format(version, flavor, arch),
-                'cpus': '1',
+                'memory': '512',
+                'cpus': str(cpus),
                 'disk_size': '65536',
                 'iso_checksum_url': '{}/SHA1SUMS'.format(dir_url),
                 'iso_checksum_type': 'sha1',
                 'iso_url': '{}/ubuntu-{}-{}-{}.iso'.format(dir_url, version, flavor, arch),
-                'memory': '512',
                 'preseed': 'ubuntu/preseed.cfg',
                 'version': '1'
             }
