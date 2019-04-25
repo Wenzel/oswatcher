@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-Usage: script.py [options] <start> <end>
+Usage: script.py [options] <start> [<end>]
 
 Options:
     -h --help                       Display this message
@@ -61,12 +61,10 @@ def gen_ubuntu_releases(start, end):
             # filter by our ranges
             if major in range(start_major, end_major + 1):
                 if major == start_major:
-                    # check minor
-                    if minor < start_minor:
+                    if minor not in range(start_minor, 10+1, 6):
                         continue
-                elif major == end_major:
-                    # check minor
-                    if minor > end_minor:
+                if major == end_major:
+                    if minor not in range(4, end_minor+1, 6):
                         continue
                 yield (major, minor)
 
@@ -115,6 +113,9 @@ def main(args):
     flavor = args['--flavor']
     arch = args['--arch']
     cpus = args['--cpus']
+
+    if end is None:
+        end = start
     # validate args
     for release_nb in [start, end]:
         if not re.match(r'\d+\.\d+', release_nb):
@@ -160,6 +161,7 @@ def main(args):
             finally:
                 # ensure output-qemu is removed for next build
                 shutil.rmtree(str(output_qemu), ignore_errors=True)
+
 
 if __name__ == '__main__':
     args = docopt(__doc__)
