@@ -12,12 +12,12 @@
 - [Requirements](#requirements)
 - [Install](#install)
 - [Usage](#usage)
- - [Troubleshooting](#troubleshooting)
- - [Maintainers](#maintainers)
- - [Contributing](#contributing)
- - [License](#license)
+- [Troubleshooting](#troubleshooting)
+- [Maintainers](#maintainers)
+- [Contributing](#contributing)
+- [License](#license)
 
-# Overview
+## Overview
 
 OSWatcher is an ambitious project that aims to track the evolution of operating
 systems by making `diffs` between recognizable characteristics.
@@ -51,7 +51,7 @@ Online:
 - iptables rules
 - loaded drivers
 
-# Requirements
+## Requirements
 
 - [`Docker`](https://www.docker.com/)
 - `python3`
@@ -117,6 +117,28 @@ MATCH(n)
 RETURN(n)
 LIMIT 300;
 ~~~
+
+### Web frontend
+
+A web frontend developed on top of `VueJS` is available in the `web` folder
+
+~~~
+cd web
+npm install
+npm run dev
+~~~
+
+#### Filesystem view
+
+![filesystem_view](https://img.linuxfr.org/img/68747470733a2f2f757365722d696d616765732e67697468756275736572636f6e74656e742e636f6d2f3936343631302f34373735393035322d38326237323738302d646362362d313165382d393733302d6330656131353738333136332e6a7067/47759052-82b72780-dcb6-11e8-9730-c0ea15783163.jpg)
+
+#### Process list view
+
+![process_list_view](https://img.linuxfr.org/img/68747470733a2f2f757365722d696d616765732e67697468756275736572636f6e74656e742e636f6d2f3936343631302f34373735393035382d38633430386638302d646362362d313165382d383638352d6665383464353431303462632e6a7067/47759058-8c408f80-dcb6-11e8-8685-fe84d54104bc.jpg)
+
+#### Syscall table view
+
+![syscall_table_view](https://img.linuxfr.org/img/68747470733a2f2f757365722d696d616765732e67697468756275736572636f6e74656e742e636f6d2f3936343631302f34373735393036312d38656132653938302d646362362d313165382d386637392d6133646132366564366261652e6a7067/47759061-8ea2e980-dcb6-11e8-8f79-a3da26ed6bae.jpg)
 
 ## Troubleshooting
 
