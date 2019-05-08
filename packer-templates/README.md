@@ -4,7 +4,7 @@ Set of `Packer` templates for `OSWatcher`.
 
 ## Requirements
 
-- [`Packer`](https://www.packer.io/downloads.html)
+- [`Packer`](https://www.packer.io/downloads.html) >= `1.3.4`
 - `python3-docopt`
 - `python3-libvirt`
 

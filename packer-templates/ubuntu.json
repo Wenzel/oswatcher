@@ -3,6 +3,9 @@
     "builders": [
         {
             "type": "qemu",
+            "vm_name": "{{ user `vm_name` }}",
+            "cpus": "{{ user `cpus`}}",
+            "memory": "{{ user `memory` }}",
             "boot_command": [
                 "<enter><wait>",
                 "<f6><esc>",
@@ -37,23 +40,17 @@
             "shutdown_command": "echo '{{ user `ssh_password` }}'| sudo -S shutdown -P now",
             "ssh_password": "{{ user `ssh_password` }}",
             "ssh_username": "{{ user `ssh_username` }}",
-            "ssh_wait_timeout": "10000s",
-            "vm_name": "{{ user `vm_name` }}",
-            "qemuargs": [
-                [ "-m", "{{ user `memory` }}" ],
-                [ "-smp", "cpus={{ user `cpus`}}"]
-            ]
+            "ssh_wait_timeout": "10000s"
         }
     ],
     "variables": {
         "cpus": "1",
-        "desktop": "false",
+        "memory": "512",
         "install_vagrant_key": "true",
         "install_dev_packages": "false",
         "disk_size": "65536",
         "headless": "true",
         "locale": "en_US",
-        "memory": "512",
         "no_proxy": "{{env `no_proxy`}}",
         "preseed" : "preseed.cfg",
         "rsync_proxy": "{{env `rsync_proxy`}}",
