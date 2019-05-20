@@ -105,7 +105,7 @@ def main(args):
     hooks_config = {}
     with open(hooks_config_path) as f:
         hooks_config = json.load(f)
-    logging.info('connect to Neo4j DB')
+    logging.info('Connect to Neo4j DB')
     graph = Graph(password=DB_PASSWORD)
 
     if 'configuration' not in hooks_config:
@@ -131,4 +131,5 @@ def main(args):
 
     with QEMUDomainContextFactory(vm_name, uri) as context:
         with Environment(context, hooks_config) as environment:
+            logging.info('Capturing %s', vm_name)
             protocol(environment)
