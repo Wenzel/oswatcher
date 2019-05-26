@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 
 """
-Usage: script.py [options] <os>
+Usage:
+    script.py --list
+    script.py [options] <os>
 
 Options:
     -h --help                       Display this message
+    -l --list                       List available OS in the database
     -d --debug                      Enable debug output
 """
 
@@ -13,6 +16,7 @@ import sys
 import logging
 from collections import Counter
 
+import matplotlib
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
@@ -23,6 +27,7 @@ from oswatcher.model import OS
 
 DB_PASSWORD = "admin"
 PROTECTIONS = ['relro', 'canary', 'nx', 'rpath', 'runpath', 'symtables', 'fortify_source']
+
 
 def init_logger(debug=False):
     logging_level = logging.INFO
@@ -40,17 +45,21 @@ def main(args):
     logging.info('connect to Neo4j DB')
     graph = Graph(password=DB_PASSWORD)
 
-    os_name = args['<os>']
-    os =  OS.match(graph).where("_.name = '{}'".format(os_name)).first()
-    if os is None:
-        logging.info('unable to find OS %s in the database', os_name)
+    # list ?
+    if args['--list']:
         logging.info('available operating systems:')
         for os in OS.match(graph):
-            logging.info('⭢ %s', os.name)
+            logging.info('\t%s', os.name)
+        return
+
+    os_name = args['<os>']
+    os = OS.match(graph).where("_.name = '{}'".format(os_name)).first()
+    if os is None:
+        logging.info('unable to find OS %s in the database', os_name)
         return 1
 
     # TODO translate to py2neo API
-    checksec_inodes = graph.run("MATCH (os:OS)-[:OWNS_FILESYSTEM]->(root:Inode)-[:HAS_CHILD*]->(i:Inode) WHERE os.name = 'ubuntu16.04' AND i.checksec = True return i")
+    checksec_inodes = graph.run("MATCH (os:OS)-[:OWNS_FILESYSTEM]->(root:Inode)-[:HAS_CHILD*]->(i:Inode) WHERE os.name = '{}' AND i.checksec = True return i".format(os.name))
     c = Counter()
     for node in checksec_inodes:
         inode = node['i']
@@ -76,18 +85,21 @@ def main(args):
     for feature in PROTECTIONS:
         logging.info('%s: %.1f%%', feature, c[feature] * 100 / c['total'])
 
+    # fix matplotlib, uses agg by default, non-gui backend
+    matplotlib.use('tkagg')
     sns.set_style('whitegrid')
 
     per_data = []
     for feature in PROTECTIONS:
         value = c[feature] * 100 / c['total']
         per_data.append(value)
-    # initialize list of lists
+    # initialize Panda DataFrame
     df = pd.DataFrame({'Protections': PROTECTIONS, 'Percentage': per_data})
     ax = sns.barplot(x="Protections", y="Percentage", data=df)
     ax.set_title('{} binary security'.format(os.name))
     # show plot
     plt.show()
+
 
 if __name__ == '__main__':
     args = docopt(__doc__)
