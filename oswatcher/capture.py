@@ -85,10 +85,11 @@ def protocol(environement):
 
 
 def init_logger(debug=False):
+    formatter = "%(asctime)s;%(levelname)s;%(message)s"
     logging_level = logging.INFO
     if debug:
         logging_level = logging.DEBUG
-    logging.basicConfig(level=logging_level)
+    logging.basicConfig(level=logging_level, format=formatter)
     # suppress annoying log output
     logging.getLogger("httpstream").setLevel(logging.WARNING)
     logging.getLogger("neo4j.bolt").setLevel(logging.WARNING)
@@ -123,11 +124,16 @@ def main(args):
     hooks_config['configuration']['debug'] = debug
 
     # delete entire graph ?
-    if "delete" in hooks_config['configuration']:
-        logging.info("Deleting all nodes in graph database")
-        graph.delete_all()
-        # reset GraphQL IDL
-        graph.run("CALL graphql.idl(null)")
+    try:
+        delete = hooks_config['configuration']['delete']
+    except KeyError:
+        pass
+    else:
+        if delete:
+            logging.info("Deleting all nodes in graph database")
+            graph.delete_all()
+            # reset GraphQL IDL
+            graph.run("CALL graphql.idl(null)")
 
     with QEMUDomainContextFactory(vm_name, uri) as context:
         with Environment(context, hooks_config) as environment:
