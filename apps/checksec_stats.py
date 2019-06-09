@@ -3,7 +3,7 @@
 """
 Usage:
     script.py --list
-    script.py [options] <os>
+    script.py [options] <os_regex>
 
 Options:
     -h --help                       Display this message
@@ -52,51 +52,64 @@ def main(args):
             logging.info('\t%s', os.name)
         return
 
-    os_name = args['<os>']
-    os = OS.match(graph).where("_.name = '{}'".format(os_name)).first()
-    if os is None:
-        logging.info('unable to find OS %s in the database', os_name)
+    os_regex = args['<os_regex>']
+    os_match = OS.match(graph).where("_.name =~ '{}'".format(os_regex))
+    if os_match is None:
+        logging.info('unable to find OS that matches \'%s\' regex in the database', os_regex)
         return 1
 
-    # TODO translate to py2neo API
-    checksec_inodes = graph.run("MATCH (os:OS)-[:OWNS_FILESYSTEM]->(root:Inode)-[:HAS_CHILD*]->(i:Inode) WHERE os.name = '{}' AND i.checksec = True return i".format(os.name))
-    c = Counter()
-    for node in checksec_inodes:
-        inode = node['i']
-        logging.debug('%s: %s', inode['name'], inode['mime_type'])
-        c['total'] += 1
-        if inode['relro']:
-            c['relro'] += 1
-        if inode['canary']:
-            c['canary'] += 1
-        if inode['nx']:
-            c['nx'] += 1
-        if inode['rpath']:
-            c['rpath'] += 1
-        if inode['runpath']:
-            c['runpath'] += 1
-        if inode['symtables']:
-            c['symtables'] += 1
-        if inode['fortify_source']:
-            c['fortify_source'] += 1
 
-    logging.info('Results for %s', os.name)
-    logging.info('Total binaries: %d', c['total'])
-    for feature in PROTECTIONS:
-        logging.info('%s: %.1f%%', feature, c[feature] * 100 / c['total'])
+    os_df_list = []
+    for os in os_match:
+        # TODO translate to py2neo API
+        checksec_inodes = graph.run("MATCH (os:OS)-[:OWNS_FILESYSTEM]->(root:Inode)-[:HAS_CHILD*]->(i:Inode) WHERE os.name = '{}' AND i.checksec = True return i".format(os.name))
+        c = Counter()
+        for node in checksec_inodes:
+            inode = node['i']
+            logging.debug('%s: %s', inode['name'], inode['mime_type'])
+            c['total'] += 1
+            if inode['relro']:
+                c['relro'] += 1
+            if inode['canary']:
+                c['canary'] += 1
+            if inode['nx']:
+                c['nx'] += 1
+            if inode['rpath']:
+                c['rpath'] += 1
+            if inode['runpath']:
+                c['runpath'] += 1
+            if inode['symtables']:
+                c['symtables'] += 1
+            if inode['fortify_source']:
+                c['fortify_source'] += 1
 
-    # fix matplotlib, uses agg by default, non-gui backend
-    matplotlib.use('tkagg')
-    sns.set_style('whitegrid')
+        logging.info('Results for %s', os.name)
+        logging.info('Total binaries: %d', c['total'])
+        for feature in PROTECTIONS:
+            logging.info('%s: %.1f%%', feature, c[feature] * 100 / c['total'])
 
-    per_data = []
-    for feature in PROTECTIONS:
-        value = c[feature] * 100 / c['total']
-        per_data.append(value)
-    # initialize Panda DataFrame
-    df = pd.DataFrame({'Protections': PROTECTIONS, 'Percentage': per_data})
-    ax = sns.barplot(x="Protections", y="Percentage", data=df)
-    ax.set_title('{} binary security'.format(os.name))
+        # fix matplotlib, uses agg by default, non-gui backend
+        matplotlib.use('tkagg')
+        sns.set_style('whitegrid')
+
+        per_data = []
+        for feature in PROTECTIONS:
+            value = c[feature] * 100 / c['total']
+            per_data.append(value)
+        # initialize Panda DataFrame
+        df = pd.DataFrame({'Protections': PROTECTIONS, 'Percentage': per_data, 'OS': os.name})
+        os_df_list.append(df)
+
+    # concatenate all the individual DataFrames
+    main_df = pd.concat(os_df_list, ignore_index=True)
+
+    logging.info('Displaying results...')
+    if len(os_df_list) == 1:
+        ax = sns.barplot(x="Protections", y="Percentage", data=main_df)
+        ax.set_title('{} binary security overview'.format(os_regex))
+    else:
+        ax = sns.barplot(x="Protections", y="Percentage", hue="OS", data=main_df)
+        ax.set_title('binary security overview for regex "{}"'.format(os_regex))
     # show plot
     plt.show()
 
