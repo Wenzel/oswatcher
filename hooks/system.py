@@ -1,5 +1,8 @@
 # sys
 import logging
+import json
+from datetime import datetime
+import xml.etree.ElementTree as ET
 
 # local
 from oswatcher.model import OS
@@ -23,7 +26,18 @@ class OperatingSystemHook(Hook):
         self.context.subscribe('protocol_end', self.insert_operating_system)
 
     def build_operating_system(self, event):
-        self.os = OS(self.domain_name)
+        xml = self.context.domain.XMLDesc()
+        root = ET.fromstring(xml)
+        # find description
+        elems = root.findall('./description')
+        if not elems:
+            raise RuntimeError('could not find description in XML, it contains the metadata !')
+        desc = elems[0]
+        try:
+            metadata = json.loads(desc.text)
+        except json.JSONDecodeError:
+            raise RuntimeError('Could load JSON metadata')
+        self.os = OS(self.domain_name, metadata['release_date'])
 
     def add_filesystem(self, event):
         logging.info('Adding root filesystem to OS node')
