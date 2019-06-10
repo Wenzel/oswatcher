@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-Usage: capture_all.py [options] <plugins_configuration>
+Usage: capture_all.py [options] <regex> <plugins_configuration>
 
 Options:
     -h --help                       Display this message
@@ -13,6 +13,8 @@ import sys
 import logging
 import libvirt
 import subprocess
+import re
+from datetime import datetime
 from pathlib import Path
 
 from docopt import docopt
@@ -33,22 +35,28 @@ def main(args):
     uri = args['--connection']
     debug = args['--debug']
     hooks_config_path = Path(args['<plugins_configuration>']).absolute()
+    pattern = args['<regex>']
 
     init_logger(debug)
     parent_dir = Path(__file__).parent.parent
     logging.debug('connecting to %s', uri)
     con = libvirt.open(uri)
     for domain in con.listAllDomains():
-        cmdline = [sys.executable, '-m', 'oswatcher', domain.name(), str(hooks_config_path)]
-        try:
-            proc = subprocess.Popen(cmdline, cwd=str(parent_dir))
-            proc.wait()
-        except KeyboardInterrupt:
-            logging.info('stopping capture !')
-            break
-        except subprocess.CalledProcessError:
-            logging.fatal('Capturing domain %s failed', domain.name())
-            continue
+        if re.match(pattern, domain.name()):
+            cmdline = [sys.executable, '-m', 'oswatcher', domain.name(), str(hooks_config_path)]
+            logging.info('#### BEGIN %s ####', domain.name())
+            start = datetime.now()
+            try:
+                proc = subprocess.Popen(cmdline, cwd=str(parent_dir))
+                proc.wait()
+            except KeyboardInterrupt:
+                logging.info('stopping capture !')
+                break
+            except subprocess.CalledProcessError:
+                logging.fatal('Capturing domain %s failed', domain.name())
+            elapsed = datetime.now() - start
+            logging.info('Time elapsed: %s', str(elapsed).split('.')[0])
+            logging.info('#### END %s ####', domain.name())
 
 
 if __name__ == '__main__':
