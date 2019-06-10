@@ -14,6 +14,7 @@ Options:
 
 import sys
 import logging
+from datetime import datetime
 from collections import Counter
 
 import matplotlib
@@ -27,7 +28,11 @@ from oswatcher.model import OS
 
 DB_PASSWORD = "admin"
 PROTECTIONS = ['relro', 'canary', 'nx', 'rpath', 'runpath', 'symtables', 'fortify_source']
-
+OS_CHECKSEC_QUERY = """
+MATCH (os:OS)-[:OWNS_FILESYSTEM]->(root:Inode)-[:HAS_CHILD*]->(i:Inode)
+WHERE os.name = '{}' AND i.checksec = True
+RETURN i
+"""
 
 def init_logger(debug=False):
     logging_level = logging.INFO
@@ -58,11 +63,11 @@ def main(args):
         logging.info('unable to find OS that matches \'%s\' regex in the database', os_regex)
         return 1
 
-
     os_df_list = []
-    for os in os_match:
+    # iterate over OS list, sorted by release date, converted from string to date object
+    for os in sorted(os_match, key=lambda x: datetime.strptime(x.release_date, '%Y-%m-%d')):
         # TODO translate to py2neo API
-        checksec_inodes = graph.run("MATCH (os:OS)-[:OWNS_FILESYSTEM]->(root:Inode)-[:HAS_CHILD*]->(i:Inode) WHERE os.name = '{}' AND i.checksec = True return i".format(os.name))
+        checksec_inodes = graph.run(OS_CHECKSEC_QUERY.format(os.name))
         c = Counter()
         for node in checksec_inodes:
             inode = node['i']
@@ -96,7 +101,7 @@ def main(args):
         for feature in PROTECTIONS:
             value = c[feature] * 100 / c['total']
             per_data.append(value)
-        # initialize Panda DataFrame
+        # initialize OS Panda DataFrame
         df = pd.DataFrame({'Protections': PROTECTIONS, 'Percentage': per_data, 'OS': os.name})
         os_df_list.append(df)
 
