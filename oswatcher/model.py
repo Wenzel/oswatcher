@@ -11,7 +11,6 @@ class OS(GraphObject):
         self.name = name
         self.release_date = release_date
 
-
     # properties
     name = Property()
     release_date = Property()
