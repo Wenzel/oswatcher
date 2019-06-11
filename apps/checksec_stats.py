@@ -27,7 +27,7 @@ from py2neo import Graph
 from oswatcher.model import OS
 
 DB_PASSWORD = "admin"
-PROTECTIONS = ['relro', 'canary', 'nx', 'rpath', 'runpath', 'symtables', 'fortify_source']
+PROTECTIONS = ['relro', 'canary', 'nx', 'fortify_source', 'rpath', 'runpath', 'symtables']
 OS_CHECKSEC_QUERY = """
 MATCH (os:OS)-[:OWNS_FILESYSTEM]->(root:Inode)-[:HAS_CHILD*]->(i:Inode)
 WHERE os.name = '{}' AND i.checksec = True
@@ -116,6 +116,7 @@ def main(args):
         ax = sns.barplot(x="Protections", y="Percentage", hue="OS", data=main_df)
         ax.set_title('binary security overview for regex "{}"'.format(os_regex))
     # show plot
+    plt.legend(loc='upper right')
     plt.show()
 
 
