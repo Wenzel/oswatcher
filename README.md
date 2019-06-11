@@ -96,9 +96,27 @@ available on `pip`.
 Follow the instructions in the `db` directory to run a it inside a docker
 container.
 
+## VM setup
+
+OSWatcher works on VMs stored in `libvirt`, either via `qemu:///session`
+or `qemu:///system`.
+
+Note: `qemu:///session` is recommended as it requires less permission
+and should work without further configuration.
+
+The only setup required is to specify a `release_date` in `JSON` format, so that
+the capture tool can insert this information in the database as well.
+
+-> In the VM XML `<description>` field, add the following content:
+~~~JSON
+{"release_date": "2012-04-01"}
+~~~
+
+You can use edit `virsh edit <domain>` or `virt-manager` tool which should be easier.
+
 ## Usage
 
-The VM name will be searched via `Libvirt`.
+Start the capture tool on a `VM` and specify the hooks configuration.
 
 ~~~
 (venv) $ python -m oswatcher <vm_name> hooks.json
