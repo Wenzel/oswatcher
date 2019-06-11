@@ -36,7 +36,7 @@ class OperatingSystemHook(Hook):
         try:
             metadata = json.loads(desc.text)
         except json.JSONDecodeError:
-            raise RuntimeError('Could load JSON metadata')
+            raise RuntimeError('Could not load JSON metadata')
         self.os = OS(self.domain_name, metadata['release_date'])
 
     def add_filesystem(self, event):
