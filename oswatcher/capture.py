@@ -9,6 +9,7 @@ import json
 from tempfile import NamedTemporaryFile, TemporaryDirectory, gettempdir
 
 # local
+from oswatcher.model import OS
 from oswatcher.utils import get_hard_disk
 
 # 3rd
@@ -21,6 +22,12 @@ from see.context import QEMUContextFactory
 __SCRIPT_DIR = os.path.dirname(os.path.realpath(sys.argv[0]))
 DB_PASSWORD = "admin"
 DESKTOP_READY_DELAY = 180
+SUBGRAPH_DELETE_OS = """
+MATCH (o:OS)-[*0..]-(x)
+WHERE o.name = "{}"
+WITH DISTINCT x
+DETACH DELETE x
+"""
 
 
 class QEMUDomainContextFactory(QEMUContextFactory):
@@ -85,10 +92,11 @@ def protocol(environement):
 
 
 def init_logger(debug=False):
+    formatter = "%(asctime)s;%(levelname)s;%(message)s"
     logging_level = logging.INFO
     if debug:
         logging_level = logging.DEBUG
-    logging.basicConfig(level=logging_level)
+    logging.basicConfig(level=logging_level, format=formatter)
     # suppress annoying log output
     logging.getLogger("httpstream").setLevel(logging.WARNING)
     logging.getLogger("neo4j.bolt").setLevel(logging.WARNING)
@@ -105,7 +113,7 @@ def main(args):
     hooks_config = {}
     with open(hooks_config_path) as f:
         hooks_config = json.load(f)
-    logging.info('connect to Neo4j DB')
+    logging.info('Connect to Neo4j DB')
     graph = Graph(password=DB_PASSWORD)
 
     if 'configuration' not in hooks_config:
@@ -123,12 +131,36 @@ def main(args):
     hooks_config['configuration']['debug'] = debug
 
     # delete entire graph ?
-    if "delete" in hooks_config['configuration']:
-        logging.info("Deleting all nodes in graph database")
-        graph.delete_all()
-        # reset GraphQL IDL
-        graph.run("CALL graphql.idl(null)")
+    try:
+        delete = hooks_config['configuration']['delete']
+    except KeyError:
+        pass
+    else:
+        if delete:
+            logging.info("Deleting all nodes in graph database")
+            graph.delete_all()
+            # reset GraphQL IDL
+            graph.run("CALL graphql.idl(null)")
+
+    # replace existing OS ?
+    os_match = OS.match(graph).where("_.name = '{}'".format(vm_name))
+    try:
+        replace = hooks_config['configuration']['replace']
+    except KeyError:
+        # assume replace = False
+        if os_match.first():
+            logging.info('OS already inserted, exiting')
+            return
+    else:
+        if not replace and os_match.first():
+            logging.info('OS already inserted, exiting')
+            return
+        elif os_match.first():
+            # replace = True and an OS already exists
+            logging.info('Deleting previous OS')
+            graph.run(SUBGRAPH_DELETE_OS.format(vm_name))
 
     with QEMUDomainContextFactory(vm_name, uri) as context:
         with Environment(context, hooks_config) as environment:
+            logging.info('Capturing %s', vm_name)
             protocol(environment)

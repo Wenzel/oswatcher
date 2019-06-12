@@ -2,7 +2,7 @@
 
 """
 Usage:
-    import_libvirt.py [options] <disk_image>
+    import_libvirt.py [options] <disk_image>...
 
 Options:
     -h --help                   Show this screen.
@@ -36,14 +36,14 @@ def prepare_domain_xml(vm_name, osw_image_path):
         return domain_xml
 
 
-def setup_storage_pool(con, pool_name, pool_path):
+def setup_storage_pool(con, pool_name):
     # check for storage pool
     try:
         pool = con.storagePoolLookupByName(pool_name)
     except libvirt.libvirtError:
         # build oswatcher pool xml
         path_elem = tree.Element('path')
-        path_elem.text = str(pool_path)
+        path_elem.text = str(POOL_PATH)
         target_elem = tree.Element('target')
         target_elem.append(path_elem)
         name_elem = tree.Element('name')
@@ -62,7 +62,11 @@ def setup_storage_pool(con, pool_name, pool_path):
     if not pool.isActive():
         pool.build()
         pool.create()
-    return pool
+    xml = pool.XMLDesc()
+    root = tree.fromstring(xml)
+    path_elem = root.findall('./target/path')[0]
+    pool_path = Path(path_elem.text)
+    return pool, pool_path
 
 
 def append_qcow(disk_image):
@@ -71,7 +75,7 @@ def append_qcow(disk_image):
     return disk_image
 
 
-def setup_domain(con, vm_name, pool, disk_image, pool_path):
+def setup_domain(con, vm_name, pool, pool_path, disk_image):
     # check if domain is already defined
     domain_name = '{}-{}'.format(PREFIX, disk_image.stem)
     if not vm_name:
@@ -101,18 +105,20 @@ def main(args):
         log_level = logging.DEBUG
     logging.basicConfig(level=log_level, format='%(message)s')
 
-    disk_image = Path(args['<disk_image>']).absolute()
+    disk_image_list = args['<disk_image>']
     pool_name = args['--pool-name']
     vm_name = args['--vm-name']
     uri = args['--connection']
     con = libvirt.open(uri)
 
-    pool = setup_storage_pool(con, pool_name, POOL_PATH)
-    setup_domain(con, vm_name, pool, disk_image, POOL_PATH)
-    # remove output-qemu
-    logging.info('Removing output-qemu')
-    output_qemu_path = Path(SCRIPT_DIR / PACKER_OUTPUT_DIR)
-    shutil.rmtree(str(output_qemu_path))
+    for disk_image in disk_image_list:
+        disk_image = Path(disk_image).absolute()
+        pool, pool_path = setup_storage_pool(con, pool_name)
+        setup_domain(con, vm_name, pool, pool_path, disk_image)
+        # remove output-qemu
+        logging.info('Removing output-qemu')
+        output_qemu_path = Path(SCRIPT_DIR / PACKER_OUTPUT_DIR)
+        shutil.rmtree(str(output_qemu_path), ignore_errors=True)
 
 
 if __name__ == '__main__':

@@ -6,12 +6,14 @@ from py2neo.ogm import GraphObject, Property, RelatedTo
 
 class OS(GraphObject):
 
-    def __init__(self, name):
+    def __init__(self, name, release_date):
         super().__init__()
         self.name = name
+        self.release_date = release_date
 
     # properties
     name = Property()
+    release_date = Property()
 
     # relationships
     root_fileystem = RelatedTo("Inode", "OWNS_FILESYSTEM")
