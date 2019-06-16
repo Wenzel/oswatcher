@@ -158,6 +158,14 @@ def main(args):
                 dst = build_dir / varfile['vm_name']
                 # move build artifact
                 shutil.move(str(src), str(dst))
+                # add metadata json
+                maj_ver, min_ver = version.split('.')
+                metadata = {
+                    'release_date': '20{}-{}-01'.format(maj_ver, min_ver)
+                }
+                metadata_path = dst.with_suffix('.json')
+                with open(str(metadata_path), 'w') as metadata_file:
+                    json.dump(metadata, metadata_file)
             finally:
                 # ensure output-qemu is removed for next build
                 shutil.rmtree(str(output_qemu), ignore_errors=True)
