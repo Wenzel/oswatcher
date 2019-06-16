@@ -59,6 +59,7 @@ class FilesystemHook(Hook):
         self.inode_checksums = self.configuration.get('inode_checksums', False)
 
         self.gfs = None
+        self.tx = None
         self.counter = 0
         self.total_entries = 0
         self.time_last_update = 0
@@ -77,7 +78,12 @@ class FilesystemHook(Hook):
                 self.walk_count(root)
             self.logger.info('Capturing filesystem')
             self.time_last_update = time.time()
+            # start py2neo transaction
+            # call self.graph.create() for each inode would be way too slow
+            self.tx = self.graph.begin()
             root_inode = self.walk_capture(root)
+            # commit transaction
+            self.tx.commit()
             # signal the operating system hook
             # that the FS has been inserted
             # and send it the root_inode to build the relationship
@@ -110,7 +116,7 @@ class FilesystemHook(Hook):
                 child_inode = self.walk_capture(subnode_abs)
                 inode.children.add(child_inode)
         # update graph inode
-        self.graph.create(inode)
+        self.tx.create(inode)
         return inode
 
     def process_new_file(self, event):
