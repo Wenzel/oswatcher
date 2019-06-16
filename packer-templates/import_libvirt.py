@@ -27,13 +27,17 @@ PACKER_OUTPUT_DIR = 'output-qemu'
 POOL_PATH = Path(SCRIPT_DIR / POOL_DIR_PATH_REL).resolve()
 
 
-def prepare_domain_xml(vm_name, osw_image_path):
+def prepare_domain_xml(vm_name, osw_image_path, metadata_path):
     with open('template_domain.xml') as templ:
         domain_xml = templ.read()
-        domain_xml = domain_xml.format(vm_name, osw_image_path)
-        root = tree.fromstring(domain_xml)
-        domain_xml = tree.tostring(root).decode()
-        return domain_xml
+        with open(metadata_path) as metadata_file:
+            # we need to escape some JSON characters which are not valid in XML
+            # TODO find a Python library to do that
+            esc_metadata = metadata_file.read().replace('"', '&quot;')
+            domain_xml = domain_xml.format(vm_name, esc_metadata, osw_image_path)
+            root = tree.fromstring(domain_xml)
+            domain_xml = tree.tostring(root).decode()
+            return domain_xml
 
 
 def setup_storage_pool(con, pool_name):
@@ -75,7 +79,7 @@ def append_qcow(disk_image):
     return disk_image
 
 
-def setup_domain(con, vm_name, pool, pool_path, disk_image):
+def setup_domain(con, vm_name, pool, pool_path, disk_image, metadata):
     # check if domain is already defined
     domain_name = '{}-{}'.format(PREFIX, disk_image.stem)
     if not vm_name:
@@ -87,7 +91,7 @@ def setup_domain(con, vm_name, pool, pool_path, disk_image):
         # move image to oswatcher pool
         osw_image_path = pool_path / disk_image.name
         shutil.move(str(disk_image), str(osw_image_path))
-        domain_xml = prepare_domain_xml(vm_name, osw_image_path)
+        domain_xml = prepare_domain_xml(vm_name, osw_image_path, metadata)
         con.defineXML(domain_xml)
         logging.info('Domain %s defined.', vm_name)
         domain = con.lookupByName(vm_name)
@@ -113,8 +117,12 @@ def main(args):
 
     for disk_image in disk_image_list:
         disk_image = Path(disk_image).absolute()
+        metadata = disk_image.with_suffix('.json')
+        if not metadata.exists():
+            logging.error('Could not find metadata file for image: %s', str(disk_image))
+            raise RuntimeError('Fail to find metadata file')
         pool, pool_path = setup_storage_pool(con, pool_name)
-        setup_domain(con, vm_name, pool, pool_path, disk_image)
+        setup_domain(con, vm_name, pool, pool_path, disk_image, metadata)
         # remove output-qemu
         logging.info('Removing output-qemu')
         output_qemu_path = Path(SCRIPT_DIR / PACKER_OUTPUT_DIR)
