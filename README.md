@@ -75,7 +75,7 @@ git submodule update --init
 On `Ubuntu 18.04`
 
 ~~~
-sudo apt-get install virtualenv python3-virtualenv libguestfs0 libguestfs-dev python3-guestfs
+sudo apt-get install virtualenv python3-virtualenv libguestfs0 libguestfs-dev python3-guestfs python3-dev pkg-config libvirt-dev
 ~~~
 
 3. Create virtualenv
