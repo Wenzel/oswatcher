@@ -11,7 +11,7 @@ import VueApollo from 'vue-apollo'
 
 // Buefy
 import Buefy from 'buefy'
-import 'buefy/lib/buefy.css'
+import 'buefy/dist/buefy.css'
 
 // Material
 import VueMaterial from 'vue-material'

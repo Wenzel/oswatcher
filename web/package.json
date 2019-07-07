@@ -16,7 +16,7 @@
     "apollo-link": "^1.2.2",
     "apollo-link-context": "^1.0.8",
     "apollo-link-http": "^1.5.4",
-    "buefy": "^0.6.6",
+    "buefy": "^0.6.7",
     "graphql": "^0.13.2",
     "graphql-tag": "^2.9.2",
     "vue": "^2.5.2",
