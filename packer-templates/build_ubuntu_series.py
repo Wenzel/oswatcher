@@ -6,7 +6,7 @@ Usage: script.py [options] <start> [<end>]
 Options:
     -h --help                       Display this message
     -d --debug                      Enable debug output
-    -f --flavor=FLAVOR              Specify Ubuntu flavor (server, desktop...) [Default: server]
+    -f --flavor=FLAVOR              Specify Ubuntu flavor (server OR desktop) [Default: server]
     -a --arch=ARCH                  Specify architecture (i386, amd64...) [Default: amd64]
     -c --cpus=CPUS                  Specify the number of cpus to use for QEMU [Default: 2]
 """
@@ -127,6 +127,10 @@ def main(args):
         logging.info('Building Ubuntu %s', version)
         logging.debug('URL : %s', dir_url)
         with NamedTemporaryFile(mode='w') as tmp_varfile:
+            flavor_real = flavor
+            if flavor == 'desktop':
+                # we have to use the alternate iso
+                flavor_real = 'alternate'
             varfile = {
                 'vm_name': 'ubuntu-{}-{}-{}.qcow2'.format(version, flavor, arch),
                 'memory': '512',
@@ -134,8 +138,8 @@ def main(args):
                 'disk_size': '65536',
                 'iso_checksum_url': '{}/SHA1SUMS'.format(dir_url),
                 'iso_checksum_type': 'sha1',
-                'iso_url': '{}/ubuntu-{}-{}-{}.iso'.format(dir_url, version, flavor, arch),
-                'preseed': 'ubuntu/preseed.cfg',
+                'iso_url': '{}/ubuntu-{}-{}-{}.iso'.format(dir_url, version, flavor_real, arch),
+                'preseed': 'ubuntu/preseed-{}.cfg'.format(flavor),
                 'version': '1'
             }
             json.dump(varfile, tmp_varfile)
