@@ -1,7 +1,8 @@
 {
     "configuration":
     {
-        "delete": true,
+        "delete": false,
+        "replace": true,
         "desktop_ready_delay": 90
     },
     "hooks":
@@ -13,7 +14,6 @@
             "name": "hooks.filesystem.FilesystemHook",
             "configuration":
             {
-                "delete": true,
                 "enumerate": true,
                 "log_progress": true,
                 "log_progress_delay": 10,
