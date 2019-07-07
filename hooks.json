@@ -13,7 +13,6 @@
             "name": "hooks.filesystem.FilesystemHook",
             "configuration":
             {
-                "delete": true,
                 "enumerate": true,
                 "log_progress": true,
                 "log_progress_delay": 10,
