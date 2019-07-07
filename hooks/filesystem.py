@@ -52,7 +52,6 @@ class FilesystemHook(Hook):
         super().__init__(parameters)
         # config
         self.graph = self.configuration['graph']
-        self.delete = self.configuration.get('delete', False)
         self.enumerate = self.configuration.get('enumerate', False)
         self.log_progress = self.configuration.get('log_progress', True)
         self.log_progress_delay = int(self.configuration.get('log_progress_delay', 0))
@@ -68,10 +67,6 @@ class FilesystemHook(Hook):
 
     def capture_fs(self, event):
         with guestfs_instance(self) as gfs:
-            # delete previous graph ?
-            if self.delete:
-                self.logger.info('Delete all nodes in graph')
-                self.graph.delete_all()
             root = Path('/')
             if self.enumerate:
                 self.logger.info('Enumerating entries')
