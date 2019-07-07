@@ -2,6 +2,7 @@
     "configuration":
     {
         "delete": false,
+        "replace": true,
         "desktop_ready_delay": 90
     },
     "hooks":
