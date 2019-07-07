@@ -40,6 +40,7 @@ class SecurityHook(Hook):
         self.kconfig = str(self.KCONFIG_BIN)
 
         self.context.subscribe('filesystem_new_file_mime', self.check_file)
+        self.context.subscribe('filesystem_new_file', self.kconfig_check)
 
     def check_file(self, event):
         filepath = event.filepath
