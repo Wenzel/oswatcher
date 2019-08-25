@@ -21,17 +21,17 @@ def guestfs_instance(self):
     self.gfs.add_libvirt_dom(self.context.domain, readonly=True)
     self.logger.debug('Running libguestfs backend')
     self.gfs.launch()
-    roots = self.gfs.inspect_os()
-    if len(roots) == 0:
-        raise RuntimeError('no operating system found')
-    # use main filesystem
-    root = roots[0]
-    mps = self.gfs.inspect_get_mountpoints(root)
-    self.logger.debug('Mounting filesystem')
-    for mount_point, device in mps.items():
-        self.gfs.mount_ro(device, mount_point)
     try:
-        yield self.gfs
+        roots = self.gfs.inspect_os()
+        if len(roots) == 0:
+            raise RuntimeError('no operating system found')
+        # use main filesystem
+        root = roots[0]
+        mps = self.gfs.inspect_get_mountpoints(root)
+        self.logger.debug('Mounting filesystem')
+        for mount_point, device in mps.items():
+            self.gfs.mount_ro(device, mount_point)
+            yield self.gfs
     finally:
         # shutdown
         self.logger.debug('shutdown libguestfs')
