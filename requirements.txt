@@ -1,5 +1,5 @@
 docopt
 libvirt-python
 py2neo
-python-see
+python-see==1.2.8
 seaborn
