@@ -6,6 +6,7 @@ import sys
 import logging
 import time
 import json
+from pathlib import Path
 from tempfile import NamedTemporaryFile, TemporaryDirectory, gettempdir
 
 # local
@@ -41,7 +42,7 @@ class QEMUDomainContextFactory(QEMUContextFactory):
         self.domain_tmp_f.write(xml)
         self.domain_tmp_f.flush()
         # find domain qcow path
-        qcow_path = get_hard_disk(domain)
+        qcow_path = Path(get_hard_disk(domain))
         # storage path
         self.osw_storage_path = TemporaryDirectory(prefix="osw-instances-",
                                                    dir=gettempdir())
@@ -53,8 +54,11 @@ class QEMUDomainContextFactory(QEMUContextFactory):
             },
             "disk": {
                 "image": {
-                    "uri": qcow_path,
-                    "provider": "see.image_providers.DummyProvider"
+                    "provider": "see.image_providers.DummyProvider",
+                    "provider_configuration": {
+                        "path": qcow_path.parent,
+                    },
+                    "name": qcow_path.name,
                 },
                 "clone": {
                     "storage_pool_path": self.osw_storage_path.name,
