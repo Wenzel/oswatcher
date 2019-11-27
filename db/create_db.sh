@@ -11,4 +11,4 @@ docker run \
     --env NEO4J_AUTH="neo4j/${PASSWORD}" \
     --ulimit=nofile=40000:40000 \
     --name oswatcher_db \
-    oswatcher_db
+    neo4j
