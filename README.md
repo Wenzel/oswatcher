@@ -54,7 +54,7 @@ Online:
 ## Requirements
 
 - [`Docker`](https://www.docker.com/)
-- `python3`
+- `python >= 3.7`
 - `virtualenv`
 - [`libguestfs`](http://libguestfs.org/)
 

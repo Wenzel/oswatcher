@@ -21,6 +21,9 @@
             }
         },
         {
+            "name": "hooks.filesystem.Neo4jFilesystemHook"
+        },
+        {
             "name": "hooks.security.SecurityHook"
         }
     ]

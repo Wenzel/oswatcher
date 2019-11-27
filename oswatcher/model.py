@@ -16,7 +16,7 @@ class OS(GraphObject):
     release_date = Property()
 
     # relationships
-    root_fileystem = RelatedTo("Inode", "OWNS_FILESYSTEM")
+    root_fileystem = RelatedTo("GraphInode", "OWNS_FILESYSTEM")
     syscall_tables = RelatedTo("SyscallTable", "OWNS_SYSCALL_TABLE")
     processes = RelatedTo("Process", "OWNS_PROCESS")
 
@@ -32,32 +32,27 @@ class InodeType(Enum):
     DOOR = stat.S_IFDOOR
 
 
-class Inode(GraphObject):
+class GraphInode(GraphObject):
 
-    def __init__(self, guestfs, filepath, checksums):
+    def __init__(self, inode):
         super().__init__()
         # default
         self.checksec = False
 
-        self.s_filepath = str(filepath)
-        name = filepath.name
-        # root ?
-        if not name:
-            name = filepath.anchor
-        self.name = name
-        if guestfs.is_file(self.s_filepath) and checksums:
-            # checksums
-            self.md5sum = guestfs.checksum('md5', self.s_filepath)
-            self.sha1sum = guestfs.checksum('sha1', self.s_filepath)
-            self.sha256sum = guestfs.checksum('sha256', self.s_filepath)
-            self.sha512sum = guestfs.checksum('sha512', self.s_filepath)
+        self.s_filepath = str(inode.path)
+        self.name = inode.name
+        # if guestfs.is_file(self.s_filepath) and checksums:
+        #     # checksums
+        #     self.md5sum = guestfs.checksum('md5', self.s_filepath)
+        #     self.sha1sum = guestfs.checksum('sha1', self.s_filepath)
+        #     self.sha256sum = guestfs.checksum('sha256', self.s_filepath)
+        #     self.sha512sum = guestfs.checksum('sha512', self.s_filepath)
 
         # l -> if symbolic link, returns info about the link itself
-        file_stat = guestfs.lstatns(self.s_filepath)
-        self.size = file_stat['st_size']
-        self.mode = stat.filemode(file_stat['st_mode'])
-        self.inode_type = InodeType(stat.S_IFMT(file_stat['st_mode'])).value
-        self.file_type = guestfs.file(self.s_filepath)
+        self.size = inode.size
+        self.mode = inode.mode
+        self.inode_type = inode.inode_type
+        self.file_type = inode.file_type
 
     # properties
     name = Property()
@@ -83,7 +78,7 @@ class Inode(GraphObject):
     fortifyable = Property()
 
     # relationships
-    children = RelatedTo("Inode", "HAS_CHILD")
+    children = RelatedTo("GraphInode", "HAS_CHILD")
     owned_by = RelatedTo("OS", "OWNED_BY")
 
 
