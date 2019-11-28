@@ -3,9 +3,24 @@ import subprocess
 import json
 import re
 from pathlib import Path
+from dataclasses import dataclass
 
 # 3rd
 from see import Hook
+
+
+@dataclass
+class ChecksecFile:
+    relro: bool
+    canary: bool
+    nx: bool
+    pie: str
+    rpath: bool
+    runpath: bool
+    symtables: bool
+    fortify_source: bool
+    fortified: bool
+    fortifyable: bool
 
 
 class SecurityHook(Hook):
@@ -30,19 +45,22 @@ class SecurityHook(Hook):
             cmdline = [self.checksec, '--output', 'json', '--file', filepath]
             checksec_data = json.loads(subprocess.check_output(cmdline).decode())
             profile = checksec_data['file']
+            self.logger.debug('profile: %s', profile)
 
             def str2bool(string):
                 return string.lower() in ['yes', 'true', 'y', '1']
 
-            # update inode
-            inode.checksec = True
-            inode.relro = True if profile['relro'] in ["full", "partial"] else False
-            inode.canary = str2bool(profile['canary'])
-            inode.nx = str2bool(profile['nx'])
-            inode.pie = profile['pie']
-            inode.rpath = str2bool(profile['rpath'])
-            inode.runpath = str2bool(profile['runpath'])
-            inode.symtables = str2bool(profile['symtables'])
-            inode.fortify_source = str2bool(profile['fortify_source'])
-            inode.fortified = profile['fortified']
-            inode.fortifyable = profile['fortify-able']
+            relro = True if profile['relro'] in ["full", "partial"] else False
+            canary = str2bool(profile['canary'])
+            nx = str2bool(profile['nx'])
+            pie = profile['pie']
+            rpath = str2bool(profile['rpath'])
+            runpath = str2bool(profile['runpath'])
+            symtables = str2bool(profile['symtables'])
+            fortify_source = str2bool(profile['fortify_source'])
+            fortified = profile['fortified']
+            fortifyable = profile['fortify-able']
+
+            checksec_file = ChecksecFile(relro, canary, nx, pie, rpath, runpath,
+                                         symtables, fortify_source, fortified, fortifyable)
+            self.context.trigger('security_checksec_bin', inode=inode, checksec_file=checksec_file)

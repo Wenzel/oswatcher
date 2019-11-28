@@ -20,7 +20,7 @@ class OperatingSystemHook(Hook):
         self.graph = self.configuration['graph']
         self.domain_name = self.configuration['domain_name']
         self.context.subscribe('protocol_start', self.build_operating_system)
-        self.context.subscribe('filesystem_inserted', self.add_filesystem)
+        self.context.subscribe('neo4jfs_capture_end', self.add_filesystem)
         self.context.subscribe('syscalls_inserted', self.add_syscalls)
         self.context.subscribe('processes_inserted', self.add_processes)
         self.context.subscribe('protocol_end', self.insert_operating_system)
