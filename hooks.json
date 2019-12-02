@@ -3,13 +3,11 @@
     {
         "delete": false,
         "replace": true,
-        "desktop_ready_delay": 90
+        "desktop_ready_delay": 90,
+        "neo4j_db": false
     },
     "hooks":
     [
-        {
-            "name": "hooks.system.OperatingSystemHook"
-        },
         {
             "name": "hooks.filesystem.FilesystemHook",
             "configuration":
@@ -19,9 +17,6 @@
                 "log_progress_delay": 10,
                 "inode_checksums": false
             }
-        },
-        {
-            "name": "hooks.filesystem.Neo4jFilesystemHook"
         },
         {
             "name": "hooks.filesystem.GitFilesystemHook",
