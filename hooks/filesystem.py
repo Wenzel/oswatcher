@@ -77,11 +77,6 @@ class FilesystemHook(Hook):
     def __init__(self, parameters):
         super().__init__(parameters)
         # config
-        self.graph = self.configuration['graph']
-        # self.repo = Repo(self.configuration['git_repo'])
-        # # repo must be clean
-        # if self.repo.is_dirty():
-        #     raise RuntimeError("Repository is dirty. Aborting.")
         self.enumerate = self.configuration.get('enumerate', False)
         self.log_progress = self.configuration.get('log_progress', True)
         self.log_progress_delay = int(self.configuration.get('log_progress_delay', 0))
