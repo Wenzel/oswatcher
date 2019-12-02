@@ -55,10 +55,10 @@ Online:
 
 ## Requirements
 
-- [`Docker`](https://www.docker.com/)
 - `python >= 3.7`
 - `virtualenv`
 - [`libguestfs`](http://libguestfs.org/)
+- [`Docker`](https://www.docker.com/) (_optional_)
 
 ## Install
 
