@@ -63,7 +63,6 @@ Online:
 ## Install
 
 1. Clone repo and submodules
-
 ~~~
 git clone https://github.com/Wenzel/oswatcher.git
 cd oswatcher
@@ -72,16 +71,13 @@ git submodule update --init
 
 2. Install system dependencies
 
-*For `Docker` please refer to your distribution*
-
 On `Ubuntu 18.04`
 
 ~~~
 sudo apt-get install virtualenv python3-virtualenv libguestfs0 libguestfs-dev python3-guestfs python3-dev pkg-config libvirt-dev
 ~~~
 
-3. Create virtualenv
-
+3. Create a `Python3` virtualenv
 ~~~
 virtualenv --system-site-packages -p python3 venv
 source venv/bin/activate
@@ -91,12 +87,19 @@ pip install -r requirements.txt
 Note: We have to use `--system-site-packages` because `libguestfs` is not
 available on `pip`.
 
-### Neo4j database
+## Hooks configuration
 
-`OSWatcher`'s data is stored on a `neo4j` database.
+Open `hooks.json` and edit `/path/to/repo` to an empty git repository (outside of `oswatcher`'s git repo).
 
-Follow the instructions in the `db` directory to run a it inside a docker
-container.
+~~~JSON
+        {
+            "name": "hooks.filesystem.GitFilesystemHook",
+            "configuration":
+            {
+                "repo": "/home/user/test/git_fs"
+            }
+        }
+~~~
 
 ## VM setup
 
@@ -106,7 +109,35 @@ or `qemu:///system`.
 Note: `qemu:///session` is recommended as it requires less permission
 and should work without further configuration.
 
-The only setup required is to specify a `release_date` in `JSON` format, so that
+## Usage: Filesystem capture in Git
+
+Start the capture tool on a `VM` and specify the hooks configuration to start
+capturing the VM's filesystem in the previously configured `git` repository.
+ 
+~~~
+(venv) $ python -m oswatcher <vm_name> hooks.json
+~~~
+
+Example: ![Capturing ubuntu
+filesystem](https://user-images.githubusercontent.com/964610/47535862-14ddbb00-d8c6-11e8-88cd-efa5db339bb8.jpg)
+
+## Advanced Usage
+
+### Neo4j
+
+Some of `OSWatcher`'s plugins are using `neo4j` as a database.
+- `system.OperatingSystemHook`
+- `filesystem.Neo4jFilesystemHook`
+- `security.SecurityHook`
+
+Follow the instructions in the `db` directory to run a `Neo4j` inside a docker
+container.
+
+Access `Neo4j` web interface at `http://localhost:7474` ![ubuntu etc
+neo4j](https://user-images.githubusercontent.com/964610/47535864-18714200-d8c6-11e8-885b-27d17c8d6235.png)
+
+
+Note: the `system.OperatingSystemHook` requires to specify a `release_date` in `JSON` format, so that
 the capture tool can insert this information in the database as well.
 
 -> In the VM XML `<description>` field, add the following content:
@@ -116,37 +147,9 @@ the capture tool can insert this information in the database as well.
 
 You can use edit `virsh edit <domain>` or `virt-manager` tool which should be easier.
 
-## Usage
+### Web frontend (WIP)
 
-Start the capture tool on a `VM` and specify the hooks configuration.
-
-~~~
-(venv) $ python -m oswatcher <vm_name> hooks.json
-~~~
-
-Example: ![Capturing ubuntu
-filesystem](https://user-images.githubusercontent.com/964610/47535862-14ddbb00-d8c6-11e8-88cd-efa5db339bb8.jpg)
-
-Access `Neo4j` web interface at `http://localhost:7474` ![ubuntu etc
-neo4j](https://user-images.githubusercontent.com/964610/47535864-18714200-d8c6-11e8-885b-27d17c8d6235.png)
-
-### neo4j
-
-~~~
-MATCH(n)
-RETURN(n)
-LIMIT 300;
-~~~
-
-### Web frontend
-
-A web frontend developed on top of `VueJS` is available in the `web` folder
-
-~~~
-cd web
-npm install
-npm run dev
-~~~
+A web frontend developed on top of `VueJS` is in development in the `web` folder.
 
 #### Filesystem view
 
