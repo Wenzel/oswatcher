@@ -76,9 +76,9 @@ class QEMUDomainContextFactory(QEMUContextFactory):
         self.domain_tmp_f.close()
 
 
-def protocol(environement):
-    context = environement.context
-    config = environement.configuration['configuration']
+def protocol(environment):
+    context = environment.context
+    config = environment.configuration['configuration']
     context.trigger('protocol_start')
     context.trigger('offline')
     # start domain
@@ -114,56 +114,67 @@ def main(args):
     hooks_config_path = args['<plugins_configuration>']
 
     init_logger(debug)
+
+    # load hooks.json
     hooks_config = {}
     with open(hooks_config_path) as f:
         hooks_config = json.load(f)
-    logging.info('Connect to Neo4j DB')
-    graph = Graph(password=DB_PASSWORD)
 
     if 'configuration' not in hooks_config:
         hooks_config['configuration'] = {}
+
+    # Neo4j required ?
+    try:
+        if hooks_config['neo4j_db']:
+            logging.info('Connect to Neo4j DB')
+            graph = Graph(password=DB_PASSWORD)
+            # insert graph object into general hook configuration
+            hooks_config['configuration']['graph'] = graph
+    except KeyError:
+        # assume neo4j_db = false
+        hooks_config['neo4j_db'] = False
 
     # use default desktop ready delay if unset
     if "desktop_ready_delay" not in hooks_config['configuration']:
         hooks_config['configuration'] = DESKTOP_READY_DELAY
 
-    # insert graph object into general hook configuration
-    hooks_config['configuration']['graph'] = graph
     # insert vm_name object
     hooks_config['configuration']['domain_name'] = vm_name
     # insert debug flag
     hooks_config['configuration']['debug'] = debug
 
-    # delete entire graph ?
+    # delete entire Neo4j graph ?
     try:
         delete = hooks_config['configuration']['delete']
     except KeyError:
         pass
     else:
-        if delete:
+        if delete and hooks_config['neo4j_db']:
             logging.info("Deleting all nodes in graph database")
             graph.delete_all()
             # reset GraphQL IDL
             graph.run("CALL graphql.idl(null)")
 
-    # replace existing OS ?
-    os_match = OS.match(graph).where("_.name = '{}'".format(vm_name))
-    try:
-        replace = hooks_config['configuration']['replace']
-    except KeyError:
-        # assume replace = False
-        if os_match.first():
-            logging.info('OS already inserted, exiting')
-            return
-    else:
-        if not replace and os_match.first():
-            logging.info('OS already inserted, exiting')
-            return
-        elif os_match.first():
-            # replace = True and an OS already exists
-            logging.info('Deleting previous OS')
-            graph.run(SUBGRAPH_DELETE_OS.format(vm_name))
+    # replace existing OS in Neo4j ?
+    if hooks_config['neo4j_db']:
+        os_match = OS.match(graph).where("_.name = '{}'".format(vm_name))
+        try:
+            replace = hooks_config['configuration']['replace']
+        except KeyError:
+            # assume replace = False
+            if os_match.first():
+                logging.info('OS already inserted, exiting')
+                return
+        else:
+            if not replace and os_match.first():
+                logging.info('OS already inserted, exiting')
+                return
+            elif os_match.first():
+                # replace = True and an OS already exists
+                logging.info('Deleting previous OS')
+                graph.run(SUBGRAPH_DELETE_OS.format(vm_name))
 
+    # Run the protocol
     with QEMUDomainContextFactory(vm_name, uri) as context:
         with Environment(context, hooks_config) as environment:
             logging.info('Capturing %s', vm_name)
