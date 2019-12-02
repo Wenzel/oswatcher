@@ -24,7 +24,11 @@
             "name": "hooks.filesystem.Neo4jFilesystemHook"
         },
         {
-            "name": "hooks.security.SecurityHook"
+            "name": "hooks.filesystem.GitFilesystemHook",
+            "configuration":
+            {
+                "repo": "/path/to/repo"
+            }
         }
     ]
 }

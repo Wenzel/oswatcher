@@ -14,6 +14,7 @@ from oswatcher.model import GraphInode
 # 3rd
 import guestfs
 from see import Hook
+from git import Repo
 
 
 class InodeType(Enum):
@@ -242,3 +243,38 @@ class Neo4jFilesystemHook(Hook):
         self.fs[str(inode.path)].fortify_source = checksec_file.fortify_source
         self.fs[str(inode.path)].fortified = checksec_file.fortified
         self.fs[str(inode.path)].fortifyable = checksec_file.fortifyable
+
+
+class GitFilesystemHook(Hook):
+
+    def __init__(self, parameters):
+        super().__init__(parameters)
+        # config
+
+        self.repo_path = Path(self.configuration['repo'])
+        self.repo = Repo(str(self.repo_path))
+        # repo must be clean
+        if self.repo.is_dirty():
+            raise RuntimeError("Repository is dirty. Aborting.")
+
+        self.context.subscribe('filesystem_new_inode', self.process_new_inode)
+        self.context.subscribe('filesystem_capture_end', self.fs_capture_end)
+
+    def process_new_inode(self, event):
+        inode = event.inode
+        filepath = self.repo_path / inode.path.relative_to('/')
+        # test if exists
+        if not filepath.exists():
+            if InodeType(inode.inode_type) == InodeType.DIR:
+                filepath.mkdir(parents=True, exist_ok=True)
+            else:
+                # everything else is treated as file
+                filepath.parent.mkdir(parents=True, exist_ok=True)
+                filepath.touch()
+        # git add
+        self.repo.git.add(str(filepath))
+
+    def fs_capture_end(self, event):
+        # commit
+        domain_name = self.configuration['domain_name']
+        self.repo.git.commit('-m', domain_name)
