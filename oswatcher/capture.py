@@ -105,6 +105,10 @@ def init_logger(debug=False):
     logging.getLogger("httpstream").setLevel(logging.WARNING)
     logging.getLogger("neo4j.bolt").setLevel(logging.WARNING)
     logging.getLogger("neobolt").setLevel(logging.WARNING)
+    # silence GitPython debug output
+    logging.getLogger("git").setLevel(logging.WARNING)
+    logging.getLogger("git.cmd").setLevel(logging.WARNING)
+    logging.getLogger("git.repo").setLevel(logging.WARNING)
 
 
 def main(args):
