@@ -89,6 +89,15 @@ class FilesystemHook(Hook):
         self.context.subscribe('offline', self.capture_fs)
         self.context.subscribe('filesystem_new_file', self.process_new_file)
 
+    def list_entries(self, node):
+        # assume that node is a directory
+        # workaround bug in libguestfs: https://bugzilla.redhat.com/show_bug.cgi?id=1778962
+        try:
+            return self.gfs.ls(str(node))
+        except UnicodeDecodeError:
+            self.logger.warning("Cannot list entries of %s directory", str(node))
+            return []
+
     def capture_fs(self, event):
         with guestfs_instance(self) as gfs:
             root = Path('/')
@@ -108,7 +117,7 @@ class FilesystemHook(Hook):
     def walk_count(self, node):
         self.total_entries += 1
         if self.gfs.is_dir(str(node)):
-            entries = self.gfs.ls(str(node))
+            entries = self.list_entries(node)
             for entry in entries:
                 subnode_abs = node / entry
                 self.walk_count(subnode_abs)
@@ -141,7 +150,7 @@ class FilesystemHook(Hook):
                 self.context.trigger('filesystem_new_file', filepath=local_file, inode=inode)
         # walk
         if self.gfs.is_dir(str(node)):
-            entries = self.gfs.ls(str(node))
+            entries = self.list_entries(node)
             for entry in entries:
                 subnode_abs = node / entry
                 child_inode = self.walk_capture(subnode_abs)
@@ -243,8 +252,6 @@ class GitFilesystemHook(Hook):
 
     def __init__(self, parameters):
         super().__init__(parameters)
-        # config
-
         self.repo_path = Path(self.configuration['repo'])
         self.repo = Repo(str(self.repo_path))
         # repo must be clean
