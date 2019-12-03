@@ -48,16 +48,15 @@ def guestfs_instance(self):
     self.logger.debug('Running libguestfs backend')
     self.gfs.launch()
     try:
-        roots = self.gfs.inspect_os()
-        if len(roots) == 0:
-            raise RuntimeError('no operating system found')
-        # use main filesystem
-        root = roots[0]
-        mps = self.gfs.inspect_get_mountpoints(root)
+        partitions = self.gfs.list_partitions()
+        if len(partitions) == 0:
+            raise RuntimeError('no partitions found')
+        # use first partition
+        # TODO: have a better detection of the main filesystem
+        main_partition = partitions[0]
         self.logger.debug('Mounting filesystem')
-        for mount_point, device in mps.items():
-            self.gfs.mount_ro(device, mount_point)
-            yield self.gfs
+        self.gfs.mount_ro(main_partition, '/')
+        yield self.gfs
     finally:
         # shutdown
         self.logger.debug('shutdown libguestfs')
