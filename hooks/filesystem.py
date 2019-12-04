@@ -2,6 +2,7 @@
 import time
 import stat
 import subprocess
+import shutil
 from enum import Enum
 from tempfile import NamedTemporaryFile
 from pathlib import Path
@@ -253,12 +254,17 @@ class GitFilesystemHook(Hook):
     def __init__(self, parameters):
         super().__init__(parameters)
         self.repo_path = Path(self.configuration['repo'])
+        self.file_content = self.configuration.get('file_content', False)
         self.repo = Repo(str(self.repo_path))
         # repo must be clean
         if self.repo.is_dirty():
             raise RuntimeError("Repository is dirty. Aborting.")
 
-        self.context.subscribe('filesystem_new_inode', self.process_new_inode)
+        if self.file_content:
+            self.context.subscribe('filesystem_new_file', self.process_new_file)
+        else:
+            # only capture filesystem tree
+            self.context.subscribe('filesystem_new_inode', self.process_new_inode)
         self.context.subscribe('filesystem_capture_end', self.fs_capture_end)
 
     def process_new_inode(self, event):
@@ -275,7 +281,26 @@ class GitFilesystemHook(Hook):
         # git add
         self.repo.git.add(str(filepath))
 
+    def process_new_file(self, event):
+        local_tmp_filepath = event.filepath
+        inode = event.inode
+
+        local_git_filepath = self.repo_path / inode.path.relative_to('/')
+        # test if exists
+        if not local_git_filepath.exists():
+            if InodeType(inode.inode_type) == InodeType.DIR:
+                local_git_filepath.mkdir(parents=True, exist_ok=True)
+            else:
+                # everything else is treated as file
+                local_git_filepath.parent.mkdir(parents=True, exist_ok=True)
+                # copy file content
+                shutil.copyfile(local_tmp_filepath, local_git_filepath)
+
+        # git add
+        self.repo.git.add(str(local_git_filepath))
+
     def fs_capture_end(self, event):
         # commit
         domain_name = self.configuration['domain_name']
+        self.logger.info('Creating new commit \'%s\'', domain_name)
         self.repo.git.commit('-m', domain_name)
