@@ -81,17 +81,19 @@ def protocol(environment):
     config = environment.configuration['configuration']
     context.trigger('protocol_start')
     context.trigger('offline')
-    # start domain
-    logging.info("Starting the domain")
-    context.poweron()
-    # wait until desktop is ready
-    logging.debug("Waiting %d seconds for desktop to be ready",
-                  config['desktop_ready_delay'])
-    time.sleep(config['desktop_ready_delay'])
-    context.trigger('desktop_ready')
-    # shutdown
-    logging.info("Shutting down the domain")
-    context.poweroff()
+    desktop_ready_delay = config['desktop_ready_delay']
+    if desktop_ready_delay > 0:
+        # start domain
+        logging.info("Starting the domain")
+        context.poweron()
+        # wait until desktop is ready
+        logging.debug("Waiting %d seconds for desktop to be ready",
+                      config['desktop_ready_delay'])
+        time.sleep(config['desktop_ready_delay'])
+        context.trigger('desktop_ready')
+        # shutdown
+        logging.info("Shutting down the domain")
+        context.poweroff()
     context.trigger('protocol_end')
 
 
