@@ -254,6 +254,7 @@ class GitFilesystemHook(Hook):
     def __init__(self, parameters):
         super().__init__(parameters)
         self.repo_path = Path(self.configuration['repo'])
+        self.commit_message = self.configuration.get('commit_message', None)
         self.file_content = self.configuration.get('file_content', False)
         self.repo = Repo(str(self.repo_path))
         # repo must be clean
@@ -301,6 +302,9 @@ class GitFilesystemHook(Hook):
 
     def fs_capture_end(self, event):
         # commit
-        domain_name = self.configuration['domain_name']
-        self.logger.info('Creating new commit \'%s\'', domain_name)
-        self.repo.git.commit('-m', domain_name)
+        message = self.configuration['domain_name']
+        # if exists and not empty
+        if self.commit_message is not None and self.commit_message:
+            message = self.commit_message
+        self.logger.info('Creating new commit \'%s\'', message)
+        self.repo.git.commit('-m', message)
