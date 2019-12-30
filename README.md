@@ -1,12 +1,12 @@
 # OSWatcher
 
-[![Join the chat at https://gitter.im/kvm-vmi/Lobby](https://badges.gitter.im/trailofbits/algo.svg)](https://gitter.im/oswatcher/Lobby)
+![](https://github.com/Wenzel/oswatcher/workflows/Build/badge.svg)
+[![Join the chat at https://gitter.im/oswatcher/Lobby](https://badges.gitter.im/trailofbits/algo.svg)](https://gitter.im/oswatcher/Lobby)
 [![standard-readme compliant](https://img.shields.io/badge/readme%20style-standard-brightgreen.svg?style=flat-square)](https://github.com/RichardLitt/standard-readme)
-![](https://github.com/Wenzel/oswatcher/workflows/Python%20application/badge.svg)
 [![tokei](https://tokei.rs/b1/github/Wenzel/oswatcher)](https://github.com/Wenzel/oswatcher)
 [![repo size](https://img.shields.io/github/repo-size/Wenzel/oswatcher)](https://github.com/Wenzel/oswatcher)
 
-> Track the evolution of operating systems over time
+> Tracking the evolution of operating systems over time
 
 ## Table of Contents
 
