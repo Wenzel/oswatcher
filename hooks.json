@@ -22,7 +22,8 @@
             "name": "hooks.filesystem.GitFilesystemHook",
             "configuration":
             {
-                "repo": "/path/to/repo"
+                "repo": "/path/to/repo",
+                "file_content": false
             }
         }
     ]
