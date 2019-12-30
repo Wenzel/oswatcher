@@ -26,6 +26,7 @@ class ChecksecFile:
 class SecurityHook(Hook):
 
     CHECKSEC_BIN = Path(__file__).parent.parent/"tools"/"checksec"/"checksec"
+    KCONFIG_BIN = Path(__file__).parent.parent/"tools"/"kconfig-hardened-check"/"kconfig-hardened-check.py"
 
     def __init__(self, parameters):
         super().__init__(parameters)
@@ -34,7 +35,12 @@ class SecurityHook(Hook):
             raise RuntimeError('Cannot find checksec, did you forget to init the submodule ?')
         self.checksec = str(self.CHECKSEC_BIN)
 
+        if not self.KCONFIG_BIN.exists():
+            raise RuntimeError('Cannot find kconfig-hardened-check, did you forget to init the submodule ?')
+        self.kconfig = str(self.KCONFIG_BIN)
+
         self.context.subscribe('filesystem_new_file_mime', self.check_file)
+        self.context.subscribe('filesystem_new_file', self.kconfig_check)
 
     def check_file(self, event):
         filepath = event.filepath

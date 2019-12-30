@@ -71,7 +71,7 @@ def guestfs_instance(self):
 def guest_local_file(gfs, remote_file):
     with NamedTemporaryFile() as temp:
         gfs.download(remote_file, temp.name)
-        yield temp.name
+        yield remote_file, temp.name
 
 
 class FilesystemHook(Hook):
@@ -149,8 +149,9 @@ class FilesystemHook(Hook):
         self.context.trigger('filesystem_new_inode', inode=inode)
         # download and execute trigger on local file
         if InodeType(inode.inode_type) == InodeType.REG:
-            with guest_local_file(self.gfs, str(node)) as local_file:
-                self.context.trigger('filesystem_new_file', filepath=local_file, inode=inode)
+            with guest_local_file(self.gfs, str(node)) as (remote_file, local_file):
+                self.context.trigger('filesystem_new_file', guest_filepath=remote_file, local_filepath=local_file,
+                                     inode=inode)
         # walk
         if self.gfs.is_dir(str(node)):
             entries = self.list_entries(node)
@@ -164,7 +165,7 @@ class FilesystemHook(Hook):
         return inode
 
     def process_new_file(self, event):
-        filepath = event.filepath
+        filepath = event.local_filepath
         inode = event.inode
         # determine MIME type
         mime_type = magic.from_file(filepath, mime=True)
