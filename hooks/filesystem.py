@@ -14,6 +14,7 @@ from oswatcher.model import GraphInode
 
 # 3rd
 import guestfs
+import magic
 from see import Hook
 from git import Repo
 
@@ -166,7 +167,7 @@ class FilesystemHook(Hook):
         filepath = event.filepath
         inode = event.inode
         # determine MIME type
-        mime_type = subprocess.check_output(['file', '-bi', filepath]).decode().rstrip()
+        mime_type = magic.from_file(filepath, mime=True)
         self.context.trigger('filesystem_new_file_mime', filepath=filepath, inode=inode, mime=mime_type)
 
     def update_log(self, node):
