@@ -1,7 +1,6 @@
 # sys
 import logging
 import json
-from datetime import datetime
 import xml.etree.ElementTree as ET
 
 # local
