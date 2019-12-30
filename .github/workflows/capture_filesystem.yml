@@ -1,0 +1,69 @@
+name: Capture Filesystem
+
+on: [pull_request]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: Update cache
+      run: sudo apt-get update
+    - name: Install system dependencies
+      run: |
+        sudo apt-get install -qq libguestfs0 libguestfs-dev \
+          libguestfs-tools pkg-config libvirt-dev libvirt-daemon-system
+    - name: Allow user to read the kernel for supermin (libguestfs)
+      run: sudo chmod 644 /boot/vmlinuz-*
+    - name: Start libvirt
+      run: sudo systemctl restart libvirtd
+    - name: Define oswatcher pool in qemu:///session
+      run: |
+        virsh -c qemu:///session pool-define-as oswatcher --type dir --target $HOME/images
+        virsh -c qemu:///session pool-build oswatcher
+        virsh -c qemu:///session pool-start oswatcher
+    - name: Set up Python 3.7
+      uses: actions/setup-python@v1
+      with:
+        python-version: '3.7'
+    - name: Install OSWatcher pip dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install docopt lxml
+        pip install http://download.libguestfs.org/python/guestfs-1.40.2.tar.gz
+    - name: Download import_libvirt script
+      run: |
+        wget 'https://raw.githubusercontent.com/Wenzel/packer-templates/f4bb800e278c18626de51c9a69083adebcff69fc/import_libvirt.py'
+        chmod +x import_libvirt.py
+    - name: Download template_domain XML
+      run: wget 'https://raw.githubusercontent.com/Wenzel/packer-templates/f4bb800e278c18626de51c9a69083adebcff69fc/template_domain.xml'
+    - name: Download win98 image
+      run: wget 'https://www.dropbox.com/s/ngu5ka9p0qsu8dq/win98.qcow2?dl=1' -O $HOME/win98.qcow2
+    - name: Import win98 in Libvirt
+      run: python import_libvirt.py --uri qemu:///session --open-vnc --pool oswatcher --pool-path $HOME/images $HOME/win98.qcow2
+    - name: Refresh oswatcher pool
+      run: virsh -c qemu:///session pool-refresh oswatcher
+    - name: Install jq to modify hooks.json
+      run: sudo apt-get install -qq jq
+    - name: Edit hooks.json
+      run: |
+        jq -r '.configuration.desktop_ready_delay |= 0' hooks.json > temp.json
+        mv temp.json hooks.json
+        jq -r ".hooks[1].configuration.repo = \"$HOME/osw_fs\"" hooks.json > temp.json
+        mv temp.json hooks.json
+        jq -r ".hooks[1].configuration.file_content = true" hooks.json > temp.json
+        mv temp.json hooks.json
+    - name: Initialize osw_fs git repo
+      run: |
+        git config --global user.email "github@github.com"
+        git config --global user.name "Github Actions"
+        git init $HOME/osw_fs
+        git lfs install
+        git lfs track '*'
+        git add .gitattributes
+        git commit -m 'track everything'
+    - name: Capture win98 filesystem
+      run: python -m oswatcher -c qemu:///session win98 hooks.json

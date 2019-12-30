@@ -1,7 +1,6 @@
 # sys
 import time
 import stat
-import subprocess
 import shutil
 from enum import Enum
 from tempfile import NamedTemporaryFile
@@ -44,27 +43,27 @@ class Inode:
 @contextmanager
 def guestfs_instance(self):
     self.logger.info('Initializing libguestfs')
-    self.gfs = guestfs.GuestFS(python_return_dict=True)
+    gfs = guestfs.GuestFS(python_return_dict=True)
     # attach libvirt domain
-    self.gfs.add_libvirt_dom(self.context.domain, readonly=True)
+    gfs.add_libvirt_dom(self.context.domain, readonly=True)
     self.logger.debug('Running libguestfs backend')
-    self.gfs.launch()
+    gfs.launch()
     try:
-        os_partitions = self.gfs.inspect_os()
+        os_partitions = gfs.inspect_os()
         if len(os_partitions) == 0:
-            main_partition = self.gfs.list_partitions()[0]
+            main_partition = gfs.list_partitions()[0]
             self.logger.warning("No OS detected, using first partition: %s", main_partition)
         else:
             # capture first detected OS
             main_partition = os_partitions[0]
         self.logger.debug('Mounting filesystem')
-        self.gfs.mount_ro(main_partition, '/')
-        yield self.gfs
+        gfs.mount_ro(main_partition, '/')
+        yield gfs
     finally:
         # shutdown
         self.logger.debug('shutdown libguestfs')
-        self.gfs.umount_all()
-        self.gfs.shutdown()
+        gfs.umount_all()
+        gfs.shutdown()
 
 
 @contextmanager
@@ -103,6 +102,7 @@ class FilesystemHook(Hook):
 
     def capture_fs(self, event):
         with guestfs_instance(self) as gfs:
+            self.gfs = gfs
             root = Path('/')
             if self.enumerate:
                 self.logger.info('Enumerating entries')
@@ -212,7 +212,6 @@ class Neo4jFilesystemHook(Hook):
     def process_new_inode(self, event):
         inode = event.inode
         g_inode = GraphInode(inode)
-        key = str(inode.path)
         self.fs[str(inode.path)] = g_inode
         if inode.path == Path('/'):
             self.root_g_inode = g_inode

@@ -25,7 +25,7 @@ class ChecksecFile:
 
 class SecurityHook(Hook):
 
-    CHECKSEC_BIN = Path(__file__).parent.parent/"tools"/"checksec"/"checksec"
+    CHECKSEC_BIN = Path(__file__).parent.parent / "tools" / "checksec" / "checksec"
 
     def __init__(self, parameters):
         super().__init__(parameters)

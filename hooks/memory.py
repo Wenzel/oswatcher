@@ -11,7 +11,7 @@ from see import Hook
 logger = logging.getLogger()
 log_level = logger.getEffectiveLevel()
 logger.setLevel(logging.CRITICAL)
-from rekall import plugins, session
+from rekall import session
 # restore our logging level
 logger.setLevel(log_level)
 
@@ -37,9 +37,9 @@ class MemoryDumpHook(Hook):
                 # chmod to be r/w by everyone
                 # before libvirt takes ownership
                 os.chmod(ram_dump.name,
-                         stat.S_IRUSR | stat.S_IWUSR |
-                         stat.S_IRGRP | stat.S_IWGRP |
-                         stat.S_IROTH | stat.S_IWOTH)
+                         stat.S_IRUSR | stat.S_IWUSR
+                         | stat.S_IRGRP | stat.S_IWGRP
+                         | stat.S_IROTH | stat.S_IWOTH)
                 # take dump
                 self.logger.info('Dumping %s physical memory to %s',
                                  self.context.domain.name(), ram_dump.name)
