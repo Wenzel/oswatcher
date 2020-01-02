@@ -1,6 +1,6 @@
 # OSWatcher
 
-![](https://github.com/Wenzel/oswatcher/workflows/Build/badge.svg)
+![](https://github.com/Wenzel/oswatcher/workflows/Capture%20Filesystem/badge.svg)
 [![Join the chat at https://gitter.im/oswatcher/Lobby](https://badges.gitter.im/trailofbits/algo.svg)](https://gitter.im/oswatcher/Lobby)
 [![standard-readme compliant](https://img.shields.io/badge/readme%20style-standard-brightgreen.svg?style=flat-square)](https://github.com/RichardLitt/standard-readme)
 [![tokei](https://tokei.rs/b1/github/Wenzel/oswatcher)](https://github.com/Wenzel/oswatcher)
