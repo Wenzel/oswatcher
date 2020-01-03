@@ -7,13 +7,15 @@ from tempfile import NamedTemporaryFile, TemporaryDirectory
 # 3rd
 import libvirt
 from see import Hook
-# silence rekall output
-logger = logging.getLogger()
-log_level = logger.getEffectiveLevel()
-logger.setLevel(logging.CRITICAL)
-from rekall import session
-# restore our logging level
-logger.setLevel(log_level)
+try:
+    # silence rekall output
+    logger = logging.getLogger()
+    log_level = logger.getEffectiveLevel()
+    logger.setLevel(logging.CRITICAL)
+    from rekall import session
+finally:
+    # restore our logging level
+    logger.setLevel(log_level)
 
 
 class MemoryDumpHook(Hook):
