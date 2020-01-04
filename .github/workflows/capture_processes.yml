@@ -57,24 +57,8 @@ jobs:
       run: python import_libvirt.py --uri qemu:///session --open-vnc --pool oswatcher --pool-path $HOME/images $HOME/win98.qcow2
     - name: Refresh oswatcher pool
       run: virsh -c qemu:///session pool-refresh oswatcher
-    - name: Install jq to modify hooks.json
-      run: sudo apt-get install -qq jq
     - name: Set hooks.json
       run: |
-        jq -r '.configuration.desktop_ready_delay |= 0' hooks.json > temp.json
-        mv temp.json hooks.json
-        jq -r ".hooks[1].configuration.repo = \"$HOME/osw_fs\"" hooks.json > temp.json
-        mv temp.json hooks.json
-        jq -r ".hooks[1].configuration.file_content = true" hooks.json > temp.json
-        mv temp.json hooks.json
-    - name: Initialize osw_fs git repo
-      run: |
-        git config --global user.email "github@github.com"
-        git config --global user.name "Github Actions"
-        git init $HOME/osw_fs
-        git lfs install
-        git lfs track '*'
-        git add .gitattributes
-        git commit -m 'track everything'
+        wget 'https://gist.githubusercontent.com/Wenzel/9e8734986b9f41b6a5ad8c6e1108b2f2/raw/c258302efe193abbade176396338842413644827/hooks.json' -O hooks.json
     - name: Capture win98 filesystem
       run: python -m oswatcher -c qemu:///session win98 hooks.json
