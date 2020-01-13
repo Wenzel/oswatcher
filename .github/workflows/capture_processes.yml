@@ -1,0 +1,65 @@
+name: Capture Processes
+
+on: [pull_request]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: Update cache
+      run: sudo apt-get update
+    - name: Install system dependencies
+      run: |
+        sudo apt-get install -qq libguestfs0 libguestfs-dev \
+          libguestfs-tools pkg-config libvirt-dev libvirt-daemon-system
+    - name: Allow user to read the kernel for supermin (libguestfs)
+      run: sudo chmod 644 /boot/vmlinuz-*
+    - name: Start libvirt
+      run: sudo systemctl restart libvirtd
+    - name: Define oswatcher pool in qemu:///session
+      run: |
+        virsh -c qemu:///session pool-define-as oswatcher --type dir --target $HOME/images
+        virsh -c qemu:///session pool-build oswatcher
+        virsh -c qemu:///session pool-start oswatcher
+    - name: Set up Python 3.7
+      uses: actions/setup-python@v1
+      with:
+        python-version: '3.7'
+    - name: Install OSWatcher pip dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install docopt lxml
+        pip install http://download.libguestfs.org/python/guestfs-1.40.2.tar.gz
+    - name: Install Volatility from git
+      run: |
+        git clone --depth 1 https://github.com/volatilityfoundation/volatility3.git /tmp/volatility3
+        pip install /tmp/volatility3
+    - name: Download import_libvirt script
+      run: |
+        wget 'https://raw.githubusercontent.com/Wenzel/packer-templates/474ea0fa9c540303c8655b521424a8860872b13d/import_libvirt.py'
+        chmod +x import_libvirt.py
+    - name: Download template_domain XML
+      run: wget 'https://raw.githubusercontent.com/Wenzel/packer-templates/474ea0fa9c540303c8655b521424a8860872b13d/template_domain.xml'
+    - name: Download winxp image
+      run: wget 'https://www.dropbox.com/s/0zycew5u3xnf8m7/winxp.qcow2?dl=1' -O $HOME/winxp.qcow2
+    - name: Import winxp in Libvirt
+      run: python import_libvirt.py --uri qemu:///session --domain-type qemu --open-vnc --pool oswatcher --pool-path $HOME/images $HOME/winxp.qcow2
+    - name: Refresh oswatcher pool
+      run: virsh -c qemu:///session pool-refresh oswatcher
+    - name: Update hooks.json
+      run: wget 'https://gist.githubusercontent.com/Wenzel/9e8734986b9f41b6a5ad8c6e1108b2f2/raw/ea3aadc7186a7ef4997e298793dc7464bf9e53c3/hooks.json' -O hooks.json
+    - name: Initialize osw_fs git repo
+      run: |
+        git config --global user.email "github@github.com"
+        git config --global user.name "Github Actions"
+        git init $HOME/osw_fs
+        git lfs install
+        git lfs track '*'
+        git add .gitattributes
+        git commit -m 'track everything'
+    - name: Capture winxp processes
+      run: python -m oswatcher -c qemu:///session winxp hooks.json -d
