@@ -36,14 +36,14 @@ jobs:
         pip install http://download.libguestfs.org/python/guestfs-1.40.2.tar.gz
     - name: Download import_libvirt script
       run: |
-        wget 'https://raw.githubusercontent.com/Wenzel/packer-templates/f4bb800e278c18626de51c9a69083adebcff69fc/import_libvirt.py'
+        wget 'https://raw.githubusercontent.com/Wenzel/packer-templates/474ea0fa9c540303c8655b521424a8860872b13d/import_libvirt.py'
         chmod +x import_libvirt.py
     - name: Download template_domain XML
-      run: wget 'https://raw.githubusercontent.com/Wenzel/packer-templates/f4bb800e278c18626de51c9a69083adebcff69fc/template_domain.xml'
+      run: wget 'https://raw.githubusercontent.com/Wenzel/packer-templates/474ea0fa9c540303c8655b521424a8860872b13d/template_domain.xml'
     - name: Download win98 image
       run: wget 'https://www.dropbox.com/s/ngu5ka9p0qsu8dq/win98.qcow2?dl=1' -O $HOME/win98.qcow2
     - name: Import win98 in Libvirt
-      run: python import_libvirt.py --uri qemu:///session --open-vnc --pool oswatcher --pool-path $HOME/images $HOME/win98.qcow2
+      run: python import_libvirt.py --uri qemu:///session --domain-type qemu --open-vnc --pool oswatcher --pool-path $HOME/images $HOME/win98.qcow2
     - name: Refresh oswatcher pool
       run: virsh -c qemu:///session pool-refresh oswatcher
     - name: Install jq to modify hooks.json
