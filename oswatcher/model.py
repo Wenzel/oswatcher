@@ -116,10 +116,9 @@ class Syscall(GraphObject):
 
 class Process(GraphObject):
 
-    def __init__(self, process_addr, name, pid, ppid, thread_count,
+    def __init__(self, name, pid, ppid, thread_count,
                  handle_count, wow64):
         super().__init__()
-        self.process_addr = process_addr
         self.name = name
         self.pid = pid
         self.ppid = ppid
@@ -128,7 +127,6 @@ class Process(GraphObject):
         self.wow64 = wow64
 
     # properties
-    process_addr = Property()
     name = Property()
     pid = Property()
     ppid = Property()
