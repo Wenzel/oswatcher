@@ -98,7 +98,7 @@ def protocol(environment):
 
 
 def init_logger(debug=False):
-    formatter = "%(asctime)s;%(levelname)s;%(message)s"
+    formatter = "%(asctime)s %(levelname)s:%(name)s:%(message)s"
     logging_level = logging.INFO
     if debug:
         logging_level = logging.DEBUG
