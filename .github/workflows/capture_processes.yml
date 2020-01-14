@@ -1,4 +1,4 @@
-name: Capture Filesystem
+name: Capture Processes
 
 on: [pull_request]
 
@@ -34,28 +34,24 @@ jobs:
         pip install -r requirements.txt
         pip install docopt lxml
         pip install http://download.libguestfs.org/python/guestfs-1.40.2.tar.gz
+    - name: Install Volatility from git
+      run: |
+        git clone --depth 1 https://github.com/volatilityfoundation/volatility3.git /tmp/volatility3
+        pip install /tmp/volatility3
     - name: Download import_libvirt script
       run: |
         wget 'https://raw.githubusercontent.com/Wenzel/packer-templates/474ea0fa9c540303c8655b521424a8860872b13d/import_libvirt.py'
         chmod +x import_libvirt.py
     - name: Download template_domain XML
       run: wget 'https://raw.githubusercontent.com/Wenzel/packer-templates/474ea0fa9c540303c8655b521424a8860872b13d/template_domain.xml'
-    - name: Download win98 image
-      run: wget 'https://www.dropbox.com/s/ngu5ka9p0qsu8dq/win98.qcow2?dl=1' -O $HOME/win98.qcow2
-    - name: Import win98 in Libvirt
-      run: python import_libvirt.py --uri qemu:///session --domain-type qemu --open-vnc --pool oswatcher --pool-path $HOME/images $HOME/win98.qcow2
+    - name: Download winxp image
+      run: wget 'https://www.dropbox.com/s/0zycew5u3xnf8m7/winxp.qcow2?dl=1' -O $HOME/winxp.qcow2
+    - name: Import winxp in Libvirt
+      run: python import_libvirt.py --uri qemu:///session --domain-type qemu --open-vnc --pool oswatcher --pool-path $HOME/images $HOME/winxp.qcow2
     - name: Refresh oswatcher pool
       run: virsh -c qemu:///session pool-refresh oswatcher
-    - name: Install jq to modify hooks.json
-      run: sudo apt-get install -qq jq
-    - name: Edit hooks.json
-      run: |
-        jq -r '.configuration.desktop_ready_delay |= 0' hooks.json > temp.json
-        mv temp.json hooks.json
-        jq -r ".hooks[1].configuration.repo = \"$HOME/osw_fs\"" hooks.json > temp.json
-        mv temp.json hooks.json
-        jq -r ".hooks[1].configuration.file_content = true" hooks.json > temp.json
-        mv temp.json hooks.json
+    - name: Update hooks.json
+      run: wget 'https://gist.githubusercontent.com/Wenzel/9e8734986b9f41b6a5ad8c6e1108b2f2/raw/ea3aadc7186a7ef4997e298793dc7464bf9e53c3/hooks.json' -O hooks.json
     - name: Initialize osw_fs git repo
       run: |
         git config --global user.email "github@github.com"
@@ -65,5 +61,5 @@ jobs:
         git lfs track '*'
         git add .gitattributes
         git commit -m 'track everything'
-    - name: Capture win98 filesystem
-      run: python -m oswatcher -c qemu:///session win98 hooks.json
+    - name: Capture winxp processes
+      run: python -m oswatcher -c qemu:///session winxp hooks.json -d

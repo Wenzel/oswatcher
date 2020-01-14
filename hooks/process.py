@@ -1,12 +1,10 @@
-# sys
-import json
-from io import StringIO
-
 # local
+from hooks.memory import JsonRenderer, BASE_CONFIG_PATH
 from oswatcher.model import Process
 
 # 3rd
 from see import Hook
+from volatility.framework import automagic, plugins
 
 
 class ProcessListHook(Hook):
@@ -14,46 +12,52 @@ class ProcessListHook(Hook):
     def __init__(self, parameters):
         super().__init__(parameters)
         # config
-        self.graph = self.configuration['graph']
-        self.context.subscribe('rekall_session', self.extract_process_list)
+        self.graph = self.configuration.get('graph')
+        self.neo4j_enabled = self.configuration.get('neo4j_db', False)
+        self.context.subscribe('forensic_session', self.extract_process_list)
 
     def extract_process_list(self, event):
+        ctx = event.context
+        automagics = event.automagics
+        plugin_list = event.plugin_list
         self.logger.info('Extracting the process list')
-        s = event.session
-        output = StringIO()
-        self.logger.debug('Running Rekall pslist plugin')
-        s.RunPlugin("pslist", output=output)
-        processes = self.parse_plugin_output(output)
-        self.insert_db(processes)
+        try:
+            plugin = plugin_list['windows.pslist.PsList']
+        except KeyError as e:
+            raise RuntimeError("Plugin not found") from e
+        automagics = automagic.choose_automagic(automagics, plugin)
+        constructed = plugins.construct_plugin(ctx, automagics, plugin, BASE_CONFIG_PATH, None, None)
+        treegrid = constructed.run()
+        renderer = JsonRenderer()
+        renderer.render(treegrid)
+        result = renderer.get_result()
+        processes = self.parse_plugin_output(result)
+        if self.neo4j_enabled:
+            self.insert_neo4j_db(processes)
+        else:
+            # print them on debug output
+            for p in processes:
+                self.logger.debug(p)
 
-    def parse_plugin_output(self, output):
+    def parse_plugin_output(self, pslist):
         processes = []
-        pslist = json.loads(output.getvalue())
-        for e in pslist:
-            e_type = e[0]
-            if e_type == 'r':
-                e_data = e[1]
-                process_entry = {}
-                process_entry['_EPROCESS'] = hex(e_data['_EPROCESS']['offset'])
-                process_entry['name'] = e_data['_EPROCESS']['Cybox']['Name']
-                process_entry['pid'] = e_data['_EPROCESS']['Cybox']['PID']
-                process_entry['ppid'] = e_data['_EPROCESS']['Cybox']['Parent_PID']
-                process_entry['thread_count'] = e_data['thread_count']
-                if isinstance(process_entry['thread_count'], dict):
-                    process_entry['thread_count'] = False
-                process_entry['handle_count'] = e_data['handle_count']
-                if isinstance(process_entry['handle_count'], dict):
-                    process_entry['handle_count'] = False
-                process_entry['wow64'] = e_data['wow64']
-                self.logger.debug('Found process %s', process_entry)
-                processes.append(process_entry)
+        for p in pslist:
+            process_entry = {
+                'name': p['ImageFileName'],
+                'pid': p['PID'],
+                'ppid': p['PPID'],
+                'thread_count': p['Threads'],
+                'handle_count': p['Handles'],
+                'wow64': p['Wow64']
+            }
+            processes.append(process_entry)
         return processes
 
-    def insert_db(self, processes):
+    def insert_neo4j_db(self, processes):
         self.logger.info('Inserting processs list into database')
         process_nodes = []
         for p in processes:
-            proc_node = Process(p['_EPROCESS'], p['name'], p['pid'], p['ppid'],
+            proc_node = Process(p['name'], p['pid'], p['ppid'],
                                 p['thread_count'], p['handle_count'], p['wow64'])
             self.graph.push(proc_node)
             process_nodes.append(proc_node)
