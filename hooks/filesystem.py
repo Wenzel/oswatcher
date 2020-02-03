@@ -131,12 +131,17 @@ class FilesystemHook(Hook):
 
     def list_entries(self, node):
         # assume that node is a directory
-        # workaround bug in libguestfs: https://bugzilla.redhat.com/show_bug.cgi?id=1778962
+        # workaround bugs in libguestfs
         try:
             return self.gfs.ls(str(node))
-        except UnicodeDecodeError:
-            self.logger.warning("Cannot list entries of %s directory", str(node))
-            return []
+        except UnicodeDecodeError as e:
+            # reported: https://bugzilla.redhat.com/show_bug.cgi?id=1778962
+            self.logger.warning("libguestfs failed to list entries of %s directory: %s", str(node), str(e))
+        except RuntimeError as e:
+            # TODO: report bug
+            self.logger.warning("libguestfs failed to list entries of %s directory: %s", str(node), str(e))
+
+        return []
 
     def capture_fs(self, event):
         with guestfs_instance(self) as gfs:
