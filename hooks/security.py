@@ -34,12 +34,14 @@ class SecurityHook(Hook):
             raise RuntimeError('Cannot find checksec, did you forget to init the submodule ?')
         self.checksec = str(self.CHECKSEC_BIN)
 
-        self.context.subscribe('filesystem_new_file_mime', self.check_file)
+        self.context.subscribe('filesystem_new_file', self.check_file)
 
     def check_file(self, event):
-        filepath = event.filepath
+        # event args
         inode = event.inode
-        mime = event.mime
+
+        mime = event.mime_type
+        filepath = event.str_path
         if re.match(r'application/x(-pie)?-(executable|sharedlib)', mime):
             # run checksec and load json
             cmdline = [self.checksec, '--output', 'json', '--file', filepath]

@@ -2,11 +2,11 @@
 import time
 import stat
 import shutil
+import functools
 from enum import Enum
 from tempfile import NamedTemporaryFile
 from pathlib import Path
 from contextlib import contextmanager
-from dataclasses import dataclass
 
 # local
 from oswatcher.model import GraphInode
@@ -29,15 +29,61 @@ class InodeType(Enum):
     DOOR = stat.S_IFDOOR
 
 
-@dataclass
 class Inode:
-    name: str
-    path: Path
-    status: dict
-    size: int
-    mode: dict
-    inode_type: InodeType
-    file_type: str
+
+    def __init__(self, gfs, node):
+        self._gfs = gfs
+        self._tmp_local_file = None
+        # public attributes
+        self.path = node
+        self.name = self.path.name
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
+
+    def close(self):
+        if self._tmp_local_file:
+            self._tmp_local_file.close()
+
+    @property
+    @functools.lru_cache()
+    def str_path(self):
+        return str(self.path)
+
+    @property
+    @functools.lru_cache()
+    def status(self):
+        return self._gfs.lstatns(self.str_path)
+
+    @property
+    @functools.lru_cache()
+    def size(self):
+        return self.status['st_size']
+
+    @property
+    @functools.lru_cache()
+    def mode(self):
+        return stat.filemode(self.status['st_mode'])
+
+    @property
+    @functools.lru_cache()
+    def inode_type(self):
+        return InodeType(stat.S_IFMT(self.status['st_mode'])).value
+
+    @property
+    @functools.lru_cache()
+    def local_file(self):
+        self._tmp_local_file = NamedTemporaryFile()
+        self._gfs.download(self.str_path, self._tmp_local_file.name)
+        return self._tmp_local_file.name
+
+    @property
+    @functools.lru_cache()
+    def mime_type(self):
+        return magic.from_file(self.local_file, mime=True)
 
 
 @contextmanager
@@ -66,13 +112,6 @@ def guestfs_instance(self):
         gfs.shutdown()
 
 
-@contextmanager
-def guest_local_file(gfs, remote_file):
-    with NamedTemporaryFile() as temp:
-        gfs.download(remote_file, temp.name)
-        yield temp.name
-
-
 class FilesystemHook(Hook):
 
     def __init__(self, parameters):
@@ -89,7 +128,6 @@ class FilesystemHook(Hook):
         self.total_entries = 0
         self.time_last_update = 0
         self.context.subscribe('offline', self.capture_fs)
-        self.context.subscribe('filesystem_new_file', self.process_new_file)
 
     def list_entries(self, node):
         # assume that node is a directory
@@ -112,9 +150,12 @@ class FilesystemHook(Hook):
 
             self.context.trigger('filesystem_capture_begin')
             root_inode = self.walk_capture(root)
+            # cleanup inode related resources
+            root_inode.close()
             # signal the operating system hook
             # that the FS has been inserted
             # and send it the root_inode to build the relationship
+            # (used by Neo4j)
             self.context.trigger('filesystem_capture_end', root=root_inode)
 
     def walk_count(self, node):
@@ -132,25 +173,15 @@ class FilesystemHook(Hook):
             self.update_log(node)
         # process current node
         self.logger.debug('inode path: %s', node)
-        # convert Path to string
         name = node.name
         # root
         if not name:
             name = node.anchor
-        s_filepath = str(node)
-        # l -> if symbolic link, returns info about the link itself
-        file_stat = self.gfs.lstatns(s_filepath)
-        size = file_stat['st_size']
-        mode = stat.filemode(file_stat['st_mode'])
-        inode_type = InodeType(stat.S_IFMT(file_stat['st_mode'])).value
-        file_type = self.gfs.file(s_filepath)
-
-        inode = Inode(name, node, file_stat, size, mode, inode_type, file_type)
+        inode = Inode(self.gfs, node)
         self.context.trigger('filesystem_new_inode', inode=inode)
         # download and execute trigger on local file
         if InodeType(inode.inode_type) == InodeType.REG:
-            with guest_local_file(self.gfs, str(node)) as local_file:
-                self.context.trigger('filesystem_new_file', filepath=local_file, inode=inode)
+            self.context.trigger('filesystem_new_file', inode=inode)
         # walk
         if self.gfs.is_dir(str(node)):
             entries = self.list_entries(node)
@@ -158,17 +189,11 @@ class FilesystemHook(Hook):
                 subnode_abs = node / entry
                 child_inode = self.walk_capture(subnode_abs)
                 self.context.trigger('filesystem_new_child_inode', inode=inode, child=child_inode)
+                # cleanup inode related resources
+                child_inode.close()
 
         self.context.trigger('filesystem_end_children', inode=inode)
-        # update graph inode
         return inode
-
-    def process_new_file(self, event):
-        filepath = event.filepath
-        inode = event.inode
-        # determine MIME type
-        mime_type = magic.from_file(filepath, mime=True)
-        self.context.trigger('filesystem_new_file_mime', filepath=filepath, inode=inode, mime=mime_type)
 
     def update_log(self, node):
         delta = time.time() - self.time_last_update
@@ -280,12 +305,10 @@ class GitFilesystemHook(Hook):
                 # everything else is treated as file
                 filepath.parent.mkdir(parents=True, exist_ok=True)
                 filepath.touch()
-        # git add
-        self.repo.git.add(str(filepath))
 
     def process_new_file(self, event):
-        local_tmp_filepath = event.filepath
         inode = event.inode
+        local_tmp_filepath = inode.local_file
 
         local_git_filepath = self.repo_path / inode.path.relative_to('/')
         # test if exists
@@ -298,10 +321,10 @@ class GitFilesystemHook(Hook):
                 # copy file content
                 shutil.copyfile(local_tmp_filepath, local_git_filepath)
 
-        # git add
-        self.repo.git.add(str(local_git_filepath))
-
     def fs_capture_end(self, event):
+        # add all files
+        self.logger.info('Adding all files in the working tree')
+        self.repo.git.add('-A')
         # commit
         message = self.configuration['domain_name']
         # if exists and not empty
