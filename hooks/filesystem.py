@@ -16,6 +16,7 @@ import guestfs
 import magic
 from see import Hook
 from git import Repo
+from git.exc import GitCommandError
 
 
 class InodeType(Enum):
@@ -282,15 +283,48 @@ class Neo4jFilesystemHook(Hook):
 
 class GitFilesystemHook(Hook):
 
+    """
+    Hook configuration example:
+    "configuration":
+            {
+                "repo": "/path/to/repo",
+                "file_content": false,
+                "commit_message": "",
+                "remove_exclusion": [
+                    "README.md",
+                    "WINDOWS/system32/calc.exe"
+                ]
+            }
+
+    parameters:
+    - repo: (mandatory) path to the git repo
+    - file_content: (optional) whether we should copy the file content. If false, it creates an empty file instead
+    - commit_message: (optional) specifies the commit message to be used
+    - remove_exclusion: (optional) a list of files to avoid removing from the old filesystem
+    """
     def __init__(self, parameters):
         super().__init__(parameters)
         self.repo_path = Path(self.configuration['repo'])
         self.commit_message = self.configuration.get('commit_message', None)
         self.file_content = self.configuration.get('file_content', False)
+        self.remove_exclusion = [Path(p) for p in self.configuration.get('remove_exclusion', [])]
         self.repo = Repo(str(self.repo_path))
         # repo must be clean
         if self.repo.is_dirty():
             raise RuntimeError("Repository is dirty. Aborting.")
+
+        # we need to remove the old filesystem at the end of the capture
+        # run git ls-files
+        # build a dict to be more efficient
+        self.to_remove_tree = {}
+        for p in [Path(p) for p in self.repo.git.ls_files().split('\n')]:
+            parts = p.parts
+            current = self.to_remove_tree
+            # iterate on all subdirectories, except filename
+            for branch in parts[:-1]:
+                current = current.setdefault(branch, {})
+            # add filename
+            current[p.name] = True
 
         if self.file_content:
             self.context.subscribe('filesystem_new_file', self.process_new_file)
@@ -301,7 +335,9 @@ class GitFilesystemHook(Hook):
 
     def process_new_inode(self, event):
         inode = event.inode
-        filepath = self.repo_path / inode.path.relative_to('/')
+
+        relpath = inode.path.relative_to('/')
+        filepath = self.repo_path / relpath
         # test if exists
         if not filepath.exists():
             if InodeType(inode.inode_type) == InodeType.DIR:
@@ -310,6 +346,18 @@ class GitFilesystemHook(Hook):
                 # everything else is treated as file
                 filepath.parent.mkdir(parents=True, exist_ok=True)
                 filepath.touch()
+        elif InodeType(inode.inode_type) != InodeType.DIR:
+            # exists and is a file
+            try:
+                # try to remove it from the old filesystem removal tree
+                current = self.to_remove_tree
+                parts = relpath.parts
+                for subdir in parts[:-1]:
+                    current = current[subdir]
+                if current[relpath.name]:
+                    del current[relpath.name]
+            except KeyError:
+                self.logger.warning("Couldn't remove %s from old filesystem removal tree", relpath)
 
     def process_new_file(self, event):
         inode = event.inode
@@ -330,10 +378,51 @@ class GitFilesystemHook(Hook):
         # add all files
         self.logger.info('Adding all files in the working tree')
         self.repo.git.add('-A')
+        # exclusion
+        for p in self.remove_exclusion:
+            try:
+                current = self.to_remove_tree
+                parts = p.parts
+                for branch in parts[:-1]:
+                    current = current[branch]
+                del current[p.name]
+            except KeyError:
+                self.logger.warning("could not exclude %s from remove list", p)
+
+        # list of git files to be removed
+        # converted from dict to string for self.repo.index.remove
+        to_remove_list = []
+
+        def walk_rm_tree(d, ancestors):
+            for k, v in d.items():
+                if isinstance(v, dict):
+                    ancestors.append(k)
+                    walk_rm_tree(v, ancestors)
+                    ancestors.pop()
+                else:
+                    # remove file
+                    p = Path(self.repo_path)
+                    for subdir in ancestors:
+                        p = p / subdir
+                    # add filename
+                    p = p / k
+                    self.logger.debug("removing: %s", p)
+                    to_remove_list.append(str(p))
+
+        self.logger.info("Removing files from the previous filesystem")
+        walk_rm_tree(self.to_remove_tree, [])
+        # cut the list in chunks of 1000 paths
+        # otherwise OSError: [Errno 7] Argument list too long: 'git'
+        for i in range(0, len(to_remove_list), 1000):
+            chunk = to_remove_list[i:i + 1000]
+            self.repo.index.remove(chunk, working_tree=True, r=True)
         # commit
         message = self.configuration['domain_name']
         # if exists and not empty
         if self.commit_message is not None and self.commit_message:
             message = self.commit_message
         self.logger.info('Creating new commit \'%s\'', message)
-        self.repo.git.commit('-m', message)
+        try:
+            self.repo.git.commit('-m', message)
+        except GitCommandError:
+            self.logger.warning("Working tree is clean, nothing to commit !")
