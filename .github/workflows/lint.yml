@@ -16,7 +16,6 @@ jobs:
     - name: Lint with flake8
       run: |
         pip install flake8
-        # ignore E402: Rekall redefining the root logger, we need a hack to avoid that
         # ignore W503: a bug flake8
-        flake8 --show-source --statistics --max-line-length=127 --ignore=E402,W503 oswatcher
-        flake8 --show-source --statistics --max-line-length=127 --ignore=E402,W503 hooks
+        flake8 --show-source --statistics --max-line-length=127 --ignore=W503 oswatcher
+        flake8 --show-source --statistics --max-line-length=127 --ignore=W503 hooks
