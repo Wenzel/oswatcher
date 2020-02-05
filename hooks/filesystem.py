@@ -130,7 +130,7 @@ class FilesystemHook(Hook):
         self.time_last_update = 0
         self.context.subscribe('offline', self.capture_fs)
 
-    def list_entries(self, node):
+    def safe_ls(self, node):
         # assume that node is a directory
         # workaround bugs in libguestfs
         try:
@@ -176,7 +176,7 @@ class FilesystemHook(Hook):
     def walk_count(self, node):
         self.total_entries += 1
         if self.safe_is_dir(node):
-            entries = self.list_entries(node)
+            entries = self.safe_ls(node)
             for entry in entries:
                 subnode_abs = node / entry
                 self.walk_count(subnode_abs)
@@ -199,7 +199,7 @@ class FilesystemHook(Hook):
             self.context.trigger('filesystem_new_file', inode=inode)
         # walk
         if self.safe_is_dir(node):
-            entries = self.list_entries(node)
+            entries = self.safe_ls(node)
             for entry in entries:
                 subnode_abs = node / entry
                 child_inode = self.walk_capture(subnode_abs)
