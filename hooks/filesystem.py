@@ -144,6 +144,15 @@ class FilesystemHook(Hook):
 
         return []
 
+    def safe_is_dir(self, node):
+        # workaround bugs in libguestfs
+        try:
+            return self.gfs.is_dir(str(node))
+        except RuntimeError as e:
+            # is_dir: lstat: /Windows/SoftwareDistribution: Input/output error
+            self.logger.warning("libguestfs lstat failed on %s: %s", str(node), str(e))
+        return False
+
     def capture_fs(self, event):
         with guestfs_instance(self) as gfs:
             self.gfs = gfs
@@ -166,7 +175,7 @@ class FilesystemHook(Hook):
 
     def walk_count(self, node):
         self.total_entries += 1
-        if self.gfs.is_dir(str(node)):
+        if self.safe_is_dir(node):
             entries = self.list_entries(node)
             for entry in entries:
                 subnode_abs = node / entry
@@ -189,7 +198,7 @@ class FilesystemHook(Hook):
         if InodeType(inode.inode_type) == InodeType.REG:
             self.context.trigger('filesystem_new_file', inode=inode)
         # walk
-        if self.gfs.is_dir(str(node)):
+        if self.safe_is_dir(node):
             entries = self.list_entries(node)
             for entry in entries:
                 subnode_abs = node / entry
