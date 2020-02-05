@@ -194,9 +194,15 @@ class FilesystemHook(Hook):
             name = node.anchor
         inode = Inode(self.gfs, node)
         self.context.trigger('filesystem_new_inode', inode=inode)
-        # download and execute trigger on local file
-        if InodeType(inode.inode_type) == InodeType.REG:
-            self.context.trigger('filesystem_new_file', inode=inode)
+        # catch libguestfs failures
+        try:
+            # download and execute trigger on local file
+            if InodeType(inode.inode_type) == InodeType.REG:
+                self.context.trigger('filesystem_new_file', inode=inode)
+        except RuntimeError as e:
+            self.logger.warning("libguestfs failure on %s: %s", node, str(e))
+            # go to next
+            return inode
         # walk
         if self.safe_is_dir(node):
             entries = self.safe_ls(node)
