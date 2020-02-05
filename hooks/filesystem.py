@@ -282,6 +282,10 @@ class Neo4jFilesystemHook(Hook):
 
 
 class GitFilesystemHook(Hook):
+    # size of the batch of files to remove for git rm command line
+    # a too long command line will raise a GitCommandError
+    # we can reduce this number if that happens in the future
+    RM_BATCH_SIZE = 1000
 
     """
     Hook configuration example:
@@ -317,7 +321,12 @@ class GitFilesystemHook(Hook):
         # run git ls-files
         # build a dict to be more efficient
         self.to_remove_tree = {}
-        for p in [Path(p) for p in self.repo.git.ls_files().split('\n')]:
+        # git ls-files doesn't like some characters like '’'
+        # and a filename: First_One’s_Free_.scale-100.png
+        # will return as: "First_One\342\200\231s_Free_.scale-100.png"
+        # we skip this file
+        # TODO: how to handle special chars -> \342\200\231 ?
+        for p in [Path(p) for p in self.repo.git.ls_files().split('\n') if not p.startswith("\"")]:
             parts = p.parts
             current = self.to_remove_tree
             # iterate on all subdirectories, except filename
@@ -349,7 +358,10 @@ class GitFilesystemHook(Hook):
         elif InodeType(inode.inode_type) != InodeType.DIR:
             # exists and is a file
             try:
-                # try to remove it from the old filesystem removal tree
+                # processing a guest path that already exists in git
+                # so it was part of the old filesystem
+                # so we should avoid removing it as part of the final git rm ...
+                # and so we should remove it from the old filesystem removal tree dict
                 current = self.to_remove_tree
                 parts = relpath.parts
                 for subdir in parts[:-1]:
@@ -411,10 +423,10 @@ class GitFilesystemHook(Hook):
 
         self.logger.info("Removing files from the previous filesystem")
         walk_rm_tree(self.to_remove_tree, [])
-        # cut the list in chunks of 1000 paths
+        # cut the list in chunks
         # otherwise OSError: [Errno 7] Argument list too long: 'git'
-        for i in range(0, len(to_remove_list), 1000):
-            chunk = to_remove_list[i:i + 1000]
+        for i in range(0, len(to_remove_list), self.RM_BATCH_SIZE):
+            chunk = to_remove_list[i:i + self.RM_BATCH_SIZE]
             self.repo.index.remove(chunk, working_tree=True, r=True)
         # commit
         message = self.configuration['domain_name']
