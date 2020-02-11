@@ -387,10 +387,8 @@ class GitFilesystemHook(Hook):
                 shutil.copyfile(local_tmp_filepath, local_git_filepath)
 
     def fs_capture_end(self, event):
-        # add all files
-        self.logger.info('Adding all files in the working tree')
-        self.repo.git.add('-A')
-        # exclusion
+        # 1 - commit removed files
+        # remove exclusion
         for p in self.remove_exclusion:
             try:
                 current = self.to_remove_tree
@@ -428,13 +426,29 @@ class GitFilesystemHook(Hook):
         for i in range(0, len(to_remove_list), self.RM_BATCH_SIZE):
             chunk = to_remove_list[i:i + self.RM_BATCH_SIZE]
             self.repo.index.remove(chunk, working_tree=True, r=True)
-        # commit
+
+        # override default message by user defined commit message
         message = self.configuration['domain_name']
-        # if exists and not empty
         if self.commit_message is not None and self.commit_message:
             message = self.commit_message
-        self.logger.info('Creating new commit \'%s\'', message)
+
+        rm_message = '[RM] {}'.format(message)
         try:
-            self.repo.git.commit('-m', message)
+            self.logger.info('Creating new commit \'%s\'', rm_message)
+            self.repo.git.commit('-m', rm_message)
         except GitCommandError:
             self.logger.warning("Working tree is clean, nothing to commit !")
+        self.logger.info("Removed %s files", len(to_remove_list))
+
+        # 2 - commit new files
+        self.logger.info('Adding all files in the working tree')
+        to_add = self.repo.untracked_files
+        self.repo.git.add('-A')
+
+        add_message = '[ADD] {}'.format(message)
+        try:
+            self.logger.info('Creating new commit \'%s\'', add_message)
+            self.repo.git.commit('-m', add_message)
+        except GitCommandError:
+            self.logger.warning("Working tree is clean, nothing to commit !")
+        self.logger.info("Added %s files", len(to_add))
