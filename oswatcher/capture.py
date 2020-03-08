@@ -113,7 +113,7 @@ def init_logger(debug=False):
     logging.getLogger("git.repo").setLevel(logging.WARNING)
 
 
-def main(args):
+def capture_main(args):
     vm_name = args['<vm_name>']
     uri = args['--connection']
     debug = args['--debug']

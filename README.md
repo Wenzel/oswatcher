@@ -81,7 +81,7 @@ sudo apt-get install virtualenv python3-virtualenv libguestfs0 libguestfs-dev py
 ~~~
 virtualenv --system-site-packages -p python3 venv
 source venv/bin/activate
-pip install -r requirements.txt
+pip install .
 ~~~
 
 Note: We have to use `--system-site-packages` because `libguestfs` is not

@@ -14,9 +14,14 @@ import sys
 
 from docopt import docopt
 
-from .capture import main
+from .capture import capture_main
 
 
-args = docopt(__doc__)
-retcode = main(args)
-sys.exit(retcode)
+def main():
+    args = docopt(__doc__)
+    retcode = capture_main(args)
+    sys.exit(retcode)
+
+
+if __name__ == "__main__":
+    main()
