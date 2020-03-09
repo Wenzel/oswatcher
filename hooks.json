@@ -12,19 +12,14 @@
             "name": "hooks.filesystem.FilesystemHook",
             "configuration":
             {
-                "enumerate": true,
+                "enumerate": false,
                 "log_progress": true,
                 "log_progress_delay": 10,
                 "inode_checksums": false
             }
         },
-        {
-            "name": "hooks.filesystem.GitFilesystemHook",
-            "configuration":
-            {
-                "repo": "/path/to/repo",
-                "file_content": false
-            }
+	{
+            "name": "hooks.static_analyzer.StaticAnalyzerHook"
         }
     ]
 }
