@@ -67,4 +67,4 @@ jobs:
         git add .gitattributes
         git commit -m 'track everything'
     - name: Capture win98 filesystem
-      run: python -m oswatcher -c qemu:///session win98 hooks.json -d
+      run: oswatcher -c qemu:///session win98 hooks.json -d

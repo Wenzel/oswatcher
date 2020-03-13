@@ -63,4 +63,4 @@ jobs:
         git add .gitattributes
         git commit -m 'track everything'
     - name: Capture winxp processes
-      run: python -m oswatcher -c qemu:///session winxp hooks.json -d
+      run: oswatcher -c qemu:///session winxp hooks.json -d
