@@ -61,9 +61,10 @@ jobs:
         git config --global user.email "github@github.com"
         git config --global user.name "Github Actions"
         git init $HOME/osw_fs
+        pushd $HOME/osw_fs
         git lfs install
         git lfs track '*'
         git add .gitattributes
         git commit -m 'track everything'
     - name: Capture win98 filesystem
-      run: python -m oswatcher -c qemu:///session win98 hooks.json
+      run: oswatcher -c qemu:///session win98 hooks.json -d
