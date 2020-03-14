@@ -263,12 +263,12 @@ class FilesystemHook(Hook):
         inode = Inode(self.gfs, node)
         # apply filters
         if self.filter_node(inode):
-            self.context.trigger('filesystem_new_inode', inode=inode)
+            self.context.trigger('filesystem_new_inode', gfs=self.gfs, inode=inode)
         # download and execute trigger on local file, if not filtered
         if inode.inode_type == InodeType.REG:
             # apply filters
             if self.filter_node(inode):
-                self.context.trigger('filesystem_new_file', inode=inode)
+                self.context.trigger('filesystem_new_file', gfs=self.gfs, inode=inode)
         # walk
         if self.gfs.is_dir(str(node)):
             entries = self.list_entries(node)
@@ -277,13 +277,13 @@ class FilesystemHook(Hook):
                 child_inode = self.walk_capture(subnode_abs)
                 # apply filters
                 if self.filter_node(inode):
-                    self.context.trigger('filesystem_new_child_inode', inode=inode, child=child_inode)
+                    self.context.trigger('filesystem_new_child_inode', gfs=self.gfs, inode=inode, child=child_inode)
                 # cleanup inode related resources
                 child_inode.close()
 
         # apply filters
         if self.filter_node(inode):
-            self.context.trigger('filesystem_end_children', inode=inode)
+            self.context.trigger('filesystem_end_children', gfs=self.gfs, inode=inode)
         return inode
 
     def update_log(self, node):
