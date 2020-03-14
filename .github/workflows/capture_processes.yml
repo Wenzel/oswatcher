@@ -52,15 +52,5 @@ jobs:
       run: virsh -c qemu:///session pool-refresh oswatcher
     - name: Update hooks.json
       run: wget 'https://gist.githubusercontent.com/Wenzel/9e8734986b9f41b6a5ad8c6e1108b2f2/raw/ea3aadc7186a7ef4997e298793dc7464bf9e53c3/hooks.json' -O hooks.json
-    - name: Initialize osw_fs git repo
-      run: |
-        git config --global user.email "github@github.com"
-        git config --global user.name "Github Actions"
-        git init $HOME/osw_fs
-        pushd $HOME/osw_fs
-        git lfs install
-        git lfs track '*'
-        git add .gitattributes
-        git commit -m 'track everything'
     - name: Capture winxp processes
       run: oswatcher -c qemu:///session winxp hooks.json -d
