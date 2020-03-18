@@ -158,8 +158,6 @@ def capture_main(args):
         if delete and hooks_config['configuration']['neo4j_db']:
             logging.info("Deleting all nodes in graph database")
             graph.delete_all()
-            # reset GraphQL IDL
-            graph.run("CALL graphql.idl(null)")
 
     # replace existing OS in Neo4j ?
     if hooks_config['configuration']['neo4j_db']:
