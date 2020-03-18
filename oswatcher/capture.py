@@ -131,18 +131,18 @@ def capture_main(args):
 
     # Neo4j required ?
     try:
-        if hooks_config['neo4j_db']:
+        if hooks_config['configuration']['neo4j_db']:
             logging.info('Connect to Neo4j DB')
             graph = Graph(password=DB_PASSWORD)
             # insert graph object into general hook configuration
             hooks_config['configuration']['graph'] = graph
     except KeyError:
         # assume neo4j_db = false
-        hooks_config['neo4j_db'] = False
+        hooks_config['configuration']['neo4j_db'] = False
 
     # use default desktop ready delay if unset
     if "desktop_ready_delay" not in hooks_config['configuration']:
-        hooks_config['configuration'] = DESKTOP_READY_DELAY
+        hooks_config['configuration']['desktop_ready_delay'] = DESKTOP_READY_DELAY
 
     # insert vm_name object
     hooks_config['configuration']['domain_name'] = vm_name
@@ -155,14 +155,14 @@ def capture_main(args):
     except KeyError:
         pass
     else:
-        if delete and hooks_config['neo4j_db']:
+        if delete and hooks_config['configuration']['neo4j_db']:
             logging.info("Deleting all nodes in graph database")
             graph.delete_all()
             # reset GraphQL IDL
             graph.run("CALL graphql.idl(null)")
 
     # replace existing OS in Neo4j ?
-    if hooks_config['neo4j_db']:
+    if hooks_config['configuration']['neo4j_db']:
         os_match = OS.match(graph).where("_.name = '{}'".format(vm_name))
         try:
             replace = hooks_config['configuration']['replace']
