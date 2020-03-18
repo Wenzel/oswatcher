@@ -1,2 +1,2 @@
-FROM neo4j:3.4
+FROM neo4j:4.0.1
 
