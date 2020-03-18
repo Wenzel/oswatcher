@@ -78,7 +78,7 @@ class Inode:
 
     @property
     @functools.lru_cache()
-    def inoode_type_value(self):
+    def inode_type_value(self):
         return self.inode_type.value
 
     @property
