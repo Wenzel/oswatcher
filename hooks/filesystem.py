@@ -38,6 +38,8 @@ class Inode:
         # public attributes
         self.path = node
         self.name = self.path.name
+        if self.name == '':
+            self.name = '/'
 
     def __enter__(self):
         return self
