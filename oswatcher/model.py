@@ -5,12 +5,6 @@ from py2neo.ogm import GraphObject, Property, RelatedTo
 
 
 class OS(GraphObject):
-
-    def __init__(self, name, release_date):
-        super().__init__()
-        self.name = name
-        self.release_date = release_date
-
     # properties
     name = Property()
     release_date = Property()
@@ -19,6 +13,11 @@ class OS(GraphObject):
     root_fileystem = RelatedTo("GraphInode", "OWNS_FILESYSTEM")
     syscall_tables = RelatedTo("SyscallTable", "OWNS_SYSCALL_TABLE")
     processes = RelatedTo("Process", "OWNS_PROCESS")
+
+    def __init__(self, name, release_date):
+        super().__init__()
+        self.name = name
+        self.release_date = release_date
 
 
 class InodeType(Enum):
@@ -33,27 +32,6 @@ class InodeType(Enum):
 
 
 class GraphInode(GraphObject):
-
-    def __init__(self, inode):
-        super().__init__()
-        # default
-        self.checksec = False
-
-        self.s_filepath = str(inode.path)
-        self.name = inode.name
-        # if guestfs.is_file(self.s_filepath) and checksums:
-        #     # checksums
-        #     self.md5sum = guestfs.checksum('md5', self.s_filepath)
-        #     self.sha1sum = guestfs.checksum('sha1', self.s_filepath)
-        #     self.sha256sum = guestfs.checksum('sha256', self.s_filepath)
-        #     self.sha512sum = guestfs.checksum('sha512', self.s_filepath)
-
-        # l -> if symbolic link, returns info about the link itself
-        self.size = inode.size
-        self.mode = inode.mode
-        self.inode_type = inode.inode_type
-        self.file_type = inode.file_type
-
     # properties
     name = Property()
     size = Property()
@@ -64,7 +42,6 @@ class GraphInode(GraphObject):
     inode_type = Property()
     file_type = Property()
     mime_type = Property()
-    # checksec prop
     checksec = Property()
     relro = Property()
     canary = Property()
@@ -81,23 +58,46 @@ class GraphInode(GraphObject):
     children = RelatedTo("GraphInode", "HAS_CHILD")
     owned_by = RelatedTo("OS", "OWNED_BY")
 
+    def __init__(self, inode):
+        super().__init__()
+        self.name = inode.name
+        # if guestfs.is_file(self.s_filepath) and checksums:
+        #     # checksums
+        #     self.md5sum = guestfs.checksum('md5', self.s_filepath)
+        #     self.sha1sum = guestfs.checksum('sha1', self.s_filepath)
+        #     self.sha256sum = guestfs.checksum('sha256', self.s_filepath)
+        #     self.sha512sum = guestfs.checksum('sha512', self.s_filepath)
+
+        self.size = inode.size
+        self.mode = inode.mode
+        self.inode_type = inode.inode_type_value
+        self.checksec = False
+
 
 class SyscallTable(GraphObject):
+    # properties
+    index = Property()
+    name = Property()
+
+    # relationships
+    syscalls = RelatedTo("Syscall", "OWNS_SYSCALL")
+    owned_by = RelatedTo("OS", "OWNED_BY")
 
     def __init__(self, index, name):
         super().__init__()
         self.index = index
         self.name = name
 
-    # properties
-    index = Property()
-    name = Property()
-
-    syscalls = RelatedTo("Syscall", "OWNS_SYSCALL")
-    owned_by = RelatedTo("OS", "OWNED_BY")
-
 
 class Syscall(GraphObject):
+    # properties
+    table = Property()
+    index = Property()
+    name = Property()
+    address = Property()
+
+    # relationships
+    owned_by = RelatedTo("SyscallTable", "OWNED_BY")
 
     def __init__(self, index, name, address):
         super().__init__()
@@ -105,16 +105,18 @@ class Syscall(GraphObject):
         self.name = name
         self.address = address
 
-    # properties
-    table = Property()
-    index = Property()
-    name = Property()
-    address = Property()
-
-    owned_by = RelatedTo("SyscallTable", "OWNED_BY")
-
 
 class Process(GraphObject):
+    # properties
+    name = Property()
+    pid = Property()
+    ppid = Property()
+    thread_count = Property()
+    handle_count = Property()
+    wow64 = Property()
+
+    # relationships
+    owned_by = RelatedTo("OS", "OWNED_BY")
 
     def __init__(self, name, pid, ppid, thread_count,
                  handle_count, wow64):
@@ -125,13 +127,3 @@ class Process(GraphObject):
         self.thread_count = thread_count
         self.handle_count = handle_count
         self.wow64 = wow64
-
-    # properties
-    name = Property()
-    pid = Property()
-    ppid = Property()
-    thread_count = Property()
-    handle_count = Property()
-    wow64 = Property()
-
-    owned_by = RelatedTo("OS", "OWNED_BY")

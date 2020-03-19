@@ -38,6 +38,8 @@ class Inode:
         # public attributes
         self.path = node
         self.name = self.path.name
+        if self.name == '':
+            self.name = '/'
 
     def __enter__(self):
         return self
@@ -76,7 +78,7 @@ class Inode:
 
     @property
     @functools.lru_cache()
-    def inoode_type_value(self):
+    def inode_type_value(self):
         return self.inode_type.value
 
     @property
@@ -283,7 +285,7 @@ class FilesystemHook(Hook):
 
         # apply filters
         if self.filter_node(inode):
-            self.context.trigger('filesystem_end_children', gfs=self.gfs, inode=inode)
+            self.context.trigger('filesystem_end_inode', gfs=self.gfs, inode=inode)
         return inode
 
     def update_log(self, node):
@@ -310,9 +312,8 @@ class Neo4jFilesystemHook(Hook):
         self.context.subscribe('filesystem_capture_begin', self.fs_capture_begin)
         self.context.subscribe('filesystem_capture_end', self.fs_capture_end)
         self.context.subscribe('filesystem_new_inode', self.process_new_inode)
-        self.context.subscribe('filesystem_new_file_mime', self.process_new_file_mime)
         self.context.subscribe('filesystem_new_child_inode', self.process_new_child)
-        self.context.subscribe('filesystem_end_children', self.process_end_children)
+        self.context.subscribe('filesystem_end_inode', self.process_end_inode)
         self.context.subscribe('security_checksec_bin', self.process_checksec_file)
 
     def fs_capture_begin(self, event):
@@ -327,28 +328,29 @@ class Neo4jFilesystemHook(Hook):
 
     def process_new_inode(self, event):
         inode = event.inode
+        # create graph object
         g_inode = GraphInode(inode)
-        self.fs[str(inode.path)] = g_inode
+        # add to fs dict for process_new_child callback
+        self.fs[inode.str_path] = g_inode
+        # set root_g_inode
         if inode.path == Path('/'):
             self.root_g_inode = g_inode
-
-    def process_new_file_mime(self, event):
-        inode = event.inode
-        mime = event.mime
-        self.fs[str(inode.path)].mime_type = mime
 
     def process_new_child(self, event):
         inode = event.inode
         child = event.child
-        g_child_inode = GraphInode(child)
-        self.fs[str(inode.path)].children.add(g_child_inode)
-        self.tx.create(g_child_inode)
+        g_inode = self.fs[inode.str_path]
+        g_child_inode = self.fs[child.str_path]
+        g_inode.children.add(g_child_inode)
+        # graph object has been inserted into children list
+        # we can safely remove it
+        del self.fs[child.str_path]
 
-    def process_end_children(self, event):
+    def process_end_inode(self, event):
         inode = event.inode
-        key = str(inode.path)
-        self.tx.push(self.fs[key])
-        del self.fs[key]
+        g_inode = self.fs[inode.str_path]
+        # insert into Neo4j transaction
+        self.tx.create(g_inode)
 
     def process_checksec_file(self, event):
         inode = event.inode
