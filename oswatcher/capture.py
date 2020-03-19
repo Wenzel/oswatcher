@@ -130,35 +130,29 @@ def capture_main(args):
         hooks_config['configuration'] = {}
 
     # Neo4j required ?
-    try:
-        if hooks_config['configuration']['neo4j_db']:
-            logging.info('Connect to Neo4j DB')
-            graph = Graph(password=DB_PASSWORD)
-            # insert graph object into general hook configuration
-            hooks_config['configuration']['graph'] = graph
-            # delete entire Neo4j graph ?
-            try:
-                delete = hooks_config['configuration']['delete']
-            except KeyError:
-                pass
-            else:
-                if delete and hooks_config['configuration']['neo4j_db']:
-                    logging.info("Deleting all nodes in graph database")
-                    graph.delete_all()
-            # replace existing OS in Neo4j ?
-            if hooks_config['configuration']['neo4j_db']:
-                os_match = OS.match(graph).where("_.name = '{}'".format(vm_name))
-                replace = hooks_config['configuration'].get('replace', False)
-                if not replace and os_match.first():
-                    logging.info('OS %s already inserted, exiting', vm_name)
-                    return
-                elif os_match.first():
-                    # replace = True and an OS already exists
-                    logging.info('Deleting previous OS %s', vm_name)
-                    graph.run(SUBGRAPH_DELETE_OS.format(vm_name))
-    except KeyError:
-        # assume neo4j_db = false
-        hooks_config['configuration']['neo4j_db'] = False
+    neo4j = hooks_config['configuration'].get('neo4j_db', {})
+    if neo4j.get('enabled'):
+        logging.info('Connect to Neo4j DB')
+        graph = Graph(password=DB_PASSWORD)
+        # insert graph object into general hook configuration
+        hooks_config['configuration']['graph'] = graph
+        # handle 'delete' key
+        # delete entire graph ?
+        delete = neo4j.get('delete')
+        if delete:
+            logging.info("Deleting all nodes in graph database")
+            graph.delete_all()
+        # handle 'replace' key
+        # replace existing OS in Neo4j ?
+        replace = neo4j.get('replace', False)
+        os_match = OS.match(graph).where("_.name = '{}'".format(vm_name))
+        if not replace and os_match.first():
+            logging.info('OS %s already inserted, exiting', vm_name)
+            return
+        elif os_match.first():
+            # replace = True and an OS already exists
+            logging.info('Deleting previous OS %s', vm_name)
+            graph.run(SUBGRAPH_DELETE_OS.format(vm_name))
 
     # use default desktop ready delay if unset
     if "desktop_ready_delay" not in hooks_config['configuration']:

@@ -1,10 +1,12 @@
 {
     "configuration":
     {
-        "delete": false,
-        "replace": true,
-        "desktop_ready_delay": 90,
-        "neo4j_db": false
+        "neo4j_db": {
+            "enabled": false,
+            "delete": false,
+            "replace": false
+        },
+        "desktop_ready_delay": 90
     },
     "hooks":
     [

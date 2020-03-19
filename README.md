@@ -133,6 +133,48 @@ Some of `OSWatcher`'s plugins are using `neo4j` as a database.
 Follow the instructions in the `db` directory to run a `Neo4j` inside a docker
 container.
 
+Modify your `hooks.json` to include a `neo4j` dictionary in the general `configuration` section.
+
+You will also need to include the:
+- `OperatingSystemHook` at least.
+
+The rest is optional. 
+
+To visualize the filesystem in `Neo4j`, include the `FilesystemHook` and the `Neo4jFilesystemHook`, like the example below:
+~~~JSON
+{
+    "configuration":
+    {
+        "neo4j_db": {
+            "enabled": true,
+            "delete": false,
+            "replace": false
+        },
+        "desktop_ready_delay": 90
+    },
+    "hooks":
+    [
+        {
+            "name": "hooks.system.OperatingSystemHook"
+        },
+        {
+            "name": "hooks.filesystem.FilesystemHook",
+            "configuration":
+            {
+                "enumerate": true,
+                "log_progress": true,
+                "log_progress_delay": 10,
+                "inode_checksums": false
+            }
+        },
+        {
+            "name": "hooks.filesystem.Neo4jFilesystemHook"
+        }
+    ]
+}
+
+~~~
+
 Access `Neo4j` web interface at `http://localhost:7474` ![ubuntu etc
 neo4j](https://user-images.githubusercontent.com/964610/47535864-18714200-d8c6-11e8-885b-27d17c8d6235.png)
 
