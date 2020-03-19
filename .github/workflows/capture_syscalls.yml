@@ -51,6 +51,6 @@ jobs:
     - name: Refresh oswatcher pool
       run: virsh -c qemu:///session pool-refresh oswatcher
     - name: Update hooks.json
-      run: wget 'https://gist.githubusercontent.com/Wenzel/3dfa9dc73313f7b6bd5424cad95e567a/raw/223be563d2164ec9d058643cbdd2c076839b9bad/hooks.json' -O hooks.json
+      run: wget 'https://gist.githubusercontent.com/Wenzel/3dfa9dc73313f7b6bd5424cad95e567a/raw/28026f078f0bf9705aab83594485e59137ca95c8/hooks.json' -O hooks.json
     - name: Capture winxp processes
       run: oswatcher -c qemu:///session winxp hooks.json -d
