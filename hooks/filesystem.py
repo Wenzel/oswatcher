@@ -285,7 +285,7 @@ class FilesystemHook(Hook):
 
         # apply filters
         if self.filter_node(inode):
-            self.context.trigger('filesystem_end_children', gfs=self.gfs, inode=inode)
+            self.context.trigger('filesystem_end_inode', gfs=self.gfs, inode=inode)
         return inode
 
     def update_log(self, node):
@@ -314,7 +314,7 @@ class Neo4jFilesystemHook(Hook):
         self.context.subscribe('filesystem_new_inode', self.process_new_inode)
         self.context.subscribe('filesystem_new_file_mime', self.process_new_file_mime)
         self.context.subscribe('filesystem_new_child_inode', self.process_new_child)
-        self.context.subscribe('filesystem_end_children', self.process_end_children)
+        self.context.subscribe('filesystem_end_inode', self.process_end_inode)
         self.context.subscribe('security_checksec_bin', self.process_checksec_file)
 
     def fs_capture_begin(self, event):
@@ -352,7 +352,7 @@ class Neo4jFilesystemHook(Hook):
         # we can safely remove it
         del self.fs[child.str_path]
 
-    def process_end_children(self, event):
+    def process_end_inode(self, event):
         inode = event.inode
         g_inode = self.fs[inode.str_path]
         # insert into Neo4j transaction
