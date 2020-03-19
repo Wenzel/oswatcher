@@ -29,14 +29,17 @@ class OperatingSystemHook(Hook):
         root = ET.fromstring(xml)
         # find description
         elems = root.findall('./description')
-        if not elems:
-            raise RuntimeError('could not find description in XML, it contains the metadata !')
-        desc = elems[0]
-        try:
-            metadata = json.loads(desc.text)
-        except json.JSONDecodeError:
-            raise RuntimeError('Could not load JSON metadata')
-        self.os = OS(self.domain_name, metadata['release_date'])
+        release_date = None
+        if elems:
+            desc = elems[0]
+            try:
+                metadata = json.loads(desc.text)
+            except json.JSONDecodeError:
+                raise RuntimeError('Could not load JSON metadata')
+            else:
+                release_date = metadata['release_date']
+                self.logger.info('OS release date: %s', release_date)
+        self.os = OS(self.domain_name, release_date)
 
     def add_filesystem(self, event):
         logging.info('Adding root filesystem to OS node')
