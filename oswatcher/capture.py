@@ -136,6 +136,26 @@ def capture_main(args):
             graph = Graph(password=DB_PASSWORD)
             # insert graph object into general hook configuration
             hooks_config['configuration']['graph'] = graph
+            # delete entire Neo4j graph ?
+            try:
+                delete = hooks_config['configuration']['delete']
+            except KeyError:
+                pass
+            else:
+                if delete and hooks_config['configuration']['neo4j_db']:
+                    logging.info("Deleting all nodes in graph database")
+                    graph.delete_all()
+            # replace existing OS in Neo4j ?
+            if hooks_config['configuration']['neo4j_db']:
+                os_match = OS.match(graph).where("_.name = '{}'".format(vm_name))
+                replace = hooks_config['configuration'].get('replace', False)
+                if not replace and os_match.first():
+                    logging.info('OS %s already inserted, exiting', vm_name)
+                    return
+                elif os_match.first():
+                    # replace = True and an OS already exists
+                    logging.info('Deleting previous OS %s', vm_name)
+                    graph.run(SUBGRAPH_DELETE_OS.format(vm_name))
     except KeyError:
         # assume neo4j_db = false
         hooks_config['configuration']['neo4j_db'] = False
@@ -148,35 +168,6 @@ def capture_main(args):
     hooks_config['configuration']['domain_name'] = vm_name
     # insert debug flag
     hooks_config['configuration']['debug'] = debug
-
-    # delete entire Neo4j graph ?
-    try:
-        delete = hooks_config['configuration']['delete']
-    except KeyError:
-        pass
-    else:
-        if delete and hooks_config['configuration']['neo4j_db']:
-            logging.info("Deleting all nodes in graph database")
-            graph.delete_all()
-
-    # replace existing OS in Neo4j ?
-    if hooks_config['configuration']['neo4j_db']:
-        os_match = OS.match(graph).where("_.name = '{}'".format(vm_name))
-        try:
-            replace = hooks_config['configuration']['replace']
-        except KeyError:
-            # assume replace = False
-            if os_match.first():
-                logging.info('OS already inserted, exiting')
-                return
-        else:
-            if not replace and os_match.first():
-                logging.info('OS already inserted, exiting')
-                return
-            elif os_match.first():
-                # replace = True and an OS already exists
-                logging.info('Deleting previous OS')
-                graph.run(SUBGRAPH_DELETE_OS.format(vm_name))
 
     # Run the protocol
     with QEMUDomainContextFactory(vm_name, uri) as context:
