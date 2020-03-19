@@ -312,7 +312,6 @@ class Neo4jFilesystemHook(Hook):
         self.context.subscribe('filesystem_capture_begin', self.fs_capture_begin)
         self.context.subscribe('filesystem_capture_end', self.fs_capture_end)
         self.context.subscribe('filesystem_new_inode', self.process_new_inode)
-        self.context.subscribe('filesystem_new_file_mime', self.process_new_file_mime)
         self.context.subscribe('filesystem_new_child_inode', self.process_new_child)
         self.context.subscribe('filesystem_end_inode', self.process_end_inode)
         self.context.subscribe('security_checksec_bin', self.process_checksec_file)
@@ -336,11 +335,6 @@ class Neo4jFilesystemHook(Hook):
         # set root_g_inode
         if inode.path == Path('/'):
             self.root_g_inode = g_inode
-
-    def process_new_file_mime(self, event):
-        inode = event.inode
-        mime = event.mime
-        self.fs[inode.str_path].mime_type = mime
 
     def process_new_child(self, event):
         inode = event.inode
