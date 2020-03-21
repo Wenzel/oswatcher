@@ -4,6 +4,17 @@ from enum import Enum
 from py2neo.ogm import GraphObject, Property, RelatedTo
 
 
+class InodeType(Enum):
+    DIR = stat.S_IFDIR
+    CHR = stat.S_IFCHR
+    BLK = stat.S_IFBLK
+    REG = stat.S_IFREG
+    FIFO = stat.S_IFIFO
+    LNK = stat.S_IFLNK
+    SOCK = stat.S_IFSOCK
+    DOOR = stat.S_IFDOOR
+
+
 class OS(GraphObject):
     # properties
     name = Property()
@@ -18,17 +29,6 @@ class OS(GraphObject):
         super().__init__()
         self.name = name
         self.release_date = release_date
-
-
-class InodeType(Enum):
-    DIR = stat.S_IFDIR
-    CHR = stat.S_IFCHR
-    BLK = stat.S_IFBLK
-    REG = stat.S_IFREG
-    FIFO = stat.S_IFIFO
-    LNK = stat.S_IFLNK
-    SOCK = stat.S_IFSOCK
-    DOOR = stat.S_IFDOOR
 
 
 class GraphInode(GraphObject):
