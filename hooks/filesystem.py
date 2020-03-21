@@ -3,13 +3,12 @@ import time
 import stat
 import shutil
 import functools
-from enum import Enum
 from tempfile import NamedTemporaryFile
 from pathlib import Path
 from contextlib import contextmanager
 
 # local
-from oswatcher.model import GraphInode
+from oswatcher.model import GraphInode, InodeType
 
 # 3rd
 import guestfs
@@ -17,17 +16,6 @@ import magic
 from see import Hook
 from git import Repo
 from git.exc import GitCommandError
-
-
-class InodeType(Enum):
-    DIR = stat.S_IFDIR
-    CHR = stat.S_IFCHR
-    BLK = stat.S_IFBLK
-    REG = stat.S_IFREG
-    FIFO = stat.S_IFIFO
-    LNK = stat.S_IFLNK
-    SOCK = stat.S_IFSOCK
-    DOOR = stat.S_IFDOOR
 
 
 class Inode:
