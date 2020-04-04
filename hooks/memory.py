@@ -1,4 +1,5 @@
 # sys
+import logging
 import os
 import stat
 import datetime
@@ -89,6 +90,11 @@ class MemoryDumpHook(Hook):
     def __init__(self, parameters):
         super().__init__(parameters)
         self.debug = self.configuration.get('debug', False)
+        if not self.debug:
+            # silence volatility
+            logging.getLogger('volatility.framework').setLevel(logging.WARNING)
+            logging.getLogger('volatility.plugins.yarascan').setLevel(logging.WARNING)
+            logging.getLogger('volatility.schemas').setLevel(logging.WARNING)
         self.context.subscribe('desktop_ready', self.dump_memory)
         self.context.subscribe('memory_dumped', self.prepare_forensic_session)
 
