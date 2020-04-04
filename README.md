@@ -87,7 +87,17 @@ pip install .
 Note: We have to use `--system-site-packages` because `libguestfs` is not
 available on `pip`.
 
-## Hooks configuration
+## VM setup
+
+OSWatcher works on VMs stored in `libvirt`, either via `qemu:///session`
+or `qemu:///system`.
+
+Note: `qemu:///session` is recommended as it requires less permission
+and should work without further configuration.
+
+## Example Usage: Filesystem capture in Git
+
+### Hooks configuration
 
 Open `hooks.json` and edit `/path/to/repo` to an empty git repository (outside of `oswatcher`'s git repo).
 
@@ -101,25 +111,19 @@ Open `hooks.json` and edit `/path/to/repo` to an empty git repository (outside o
         }
 ~~~
 
-## VM setup
-
-OSWatcher works on VMs stored in `libvirt`, either via `qemu:///session`
-or `qemu:///system`.
-
-Note: `qemu:///session` is recommended as it requires less permission
-and should work without further configuration.
-
-## Usage: Filesystem capture in Git
-
 Start the capture tool on a `VM` and specify the hooks configuration to start
 capturing the VM's filesystem in the previously configured `git` repository.
- 
+
 ~~~
-(venv) $ python -m oswatcher <vm_name> hooks.json
+(venv) $ oswatcher [options] <vm_name> hooks.json
 ~~~
 
-Example: ![Capturing ubuntu
-filesystem](https://user-images.githubusercontent.com/964610/47535862-14ddbb00-d8c6-11e8-88cd-efa5db339bb8.jpg)
+## Demo
+
+Capturing Windows XP Filesystem in a git repository ([high-quality](https://drive.google.com/open?id=15JF_Pr-kpCLkeHwaX_cfHUq744BZwsNo))
+
+![Capturing winxp
+filesystem](https://user-images.githubusercontent.com/964610/78451333-923d5b80-7674-11ea-854d-37a53bd7d3ae.gif)
 
 ## Advanced Usage
 
@@ -177,17 +181,6 @@ To visualize the filesystem in `Neo4j`, include the `FilesystemHook` and the `Ne
 
 Access `Neo4j` web interface at `http://localhost:7474` ![ubuntu etc
 neo4j](https://user-images.githubusercontent.com/964610/47535864-18714200-d8c6-11e8-885b-27d17c8d6235.png)
-
-
-Note: the `system.OperatingSystemHook` requires to specify a `release_date` in `JSON` format, so that
-the capture tool can insert this information in the database as well.
-
--> In the VM XML `<description>` field, add the following content:
-~~~JSON
-{"release_date": "2012-04-01"}
-~~~
-
-You can use edit `virsh edit <domain>` or `virt-manager` tool which should be easier.
 
 ## Troubleshooting
 
