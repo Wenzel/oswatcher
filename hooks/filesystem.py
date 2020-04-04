@@ -9,6 +9,7 @@ from contextlib import contextmanager
 
 # local
 from oswatcher.model import GraphInode, InodeType
+from oswatcher.utils import get_hard_drive_path
 
 # 3rd
 import guestfs
@@ -89,6 +90,8 @@ def guestfs_instance(self):
     self.logger.info('Initializing libguestfs')
     gfs = guestfs.GuestFS(python_return_dict=True)
     # attach libvirt domain
+    qcow_path = get_hard_drive_path(self.context.domain)
+    self.logger.debug('Hard drive: %s', qcow_path)
     gfs.add_libvirt_dom(self.context.domain, readonly=True)
     self.logger.debug('Running libguestfs backend')
     gfs.launch()
