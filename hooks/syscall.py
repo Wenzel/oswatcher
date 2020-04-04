@@ -1,4 +1,5 @@
 # local
+from oswatcher.model import Syscall
 from hooks.memory import JsonRenderer, BASE_CONFIG_PATH
 
 # 3rd
@@ -13,6 +14,7 @@ class SyscallTableHook(Hook):
         # config
         self.graph = self.configuration.get('graph', None)
         self.neo4j_enabled = self.configuration.get('neo4j_db', False)
+        self.debug = self.configuration.get('debug', False)
         self.context.subscribe('forensic_session', self.extract_syscall_table)
 
     def extract_syscall_table(self, event):
@@ -32,15 +34,30 @@ class SyscallTableHook(Hook):
         result = renderer.get_result()
         sdt = self.parse_ssdt_output(result)
 
-        # print syscalls on debug output
-        for table_name, table in sdt.items():
-            self.logger.debug('Displaying table %s', table_name)
-            for syscall in table:
-                self.logger.debug('[%s]: %s %s',
-                                  syscall['Index'], syscall['Symbol'], hex(syscall['Address']))
+        if self.neo4j_enabled:
+            self.insert_neo4j_db(sdt)
+
+        if self.debug:
+            # print syscalls on debug output
+            for table_name, table in sdt.items():
+                self.logger.debug('Displaying table %s', table_name)
+                for syscall in table:
+                    self.logger.debug('[%s]: %s %s',
+                                      syscall['Index'], syscall['Symbol'], hex(syscall['Address']))
 
     def parse_ssdt_output(self, ssdt_tables):
         sdt = {
             'Nt': [syscall for syscall in ssdt_tables if syscall['Module'] == 'ntoskrnl']
         }
         return sdt
+
+    def insert_neo4j_db(self, sdt):
+        syscall_nodes = []
+        for table_name, table in sdt.items():
+            for syscall in table:
+                syscall_node = Syscall(table_name, syscall['Index'], syscall['Symbol'], hex(syscall['Address']))
+                self.graph.push(syscall_node)
+                syscall_nodes.append(syscall_node)
+        # signal the operating system Hook that the syscalls has been
+        # inserted, to add the relationship
+        self.context.trigger('syscalls_inserted', syscalls=syscall_nodes)
