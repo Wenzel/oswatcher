@@ -61,6 +61,6 @@ class ProcessListHook(Hook):
                                 p['thread_count'], p['handle_count'], p['wow64'])
             self.graph.push(proc_node)
             process_nodes.append(proc_node)
-        # signal the operating system Hook that the syscalls has been
+        # signal the operating system Hook that the processes has been
         # inserted, to add the relationship
         self.context.trigger('processes_inserted', processes=process_nodes)
