@@ -1,7 +1,9 @@
 # sys
+import logging
 import os
 import stat
 import datetime
+import shutil
 from pathlib import Path
 from typing import Any, List, Tuple, Dict, Optional
 from tempfile import NamedTemporaryFile, TemporaryDirectory
@@ -89,6 +91,16 @@ class MemoryDumpHook(Hook):
     def __init__(self, parameters):
         super().__init__(parameters)
         self.debug = self.configuration.get('debug', False)
+        if not self.debug:
+            # silence volatility
+            logging.getLogger('volatility.framework').setLevel(logging.WARNING)
+            logging.getLogger('volatility.plugins.yarascan').setLevel(logging.WARNING)
+            logging.getLogger('volatility.schemas').setLevel(logging.WARNING)
+        self.keep_dump = self.configuration.get('keep_dump', False)
+        orig_domain_name = self.configuration['domain_name']
+        default_dump_path = Path.cwd() / "{domain_name}-{tmp_uuid}.dump".format(
+            domain_name=orig_domain_name, tmp_uuid=self.context.domain.name())
+        self.keep_dump_path = Path(self.configuration.get('dump_path', default_dump_path))
         self.context.subscribe('desktop_ready', self.dump_memory)
         self.context.subscribe('memory_dumped', self.prepare_forensic_session)
 
@@ -98,7 +110,7 @@ class MemoryDumpHook(Hook):
         # otherwise the dumpfile will be owned by libvirt
         # and we don't have the permission to remove it in /tmp
         with TemporaryDirectory() as tmp_dir:
-            with NamedTemporaryFile(dir=tmp_dir) as ram_dump:
+            with NamedTemporaryFile(dir=tmp_dir, delete=not self.keep_dump) as ram_dump:
                 # chmod to be r/w by everyone
                 # before libvirt takes ownership
                 os.chmod(ram_dump.name,
@@ -113,6 +125,9 @@ class MemoryDumpHook(Hook):
                 self.context.domain.coreDumpWithFormat(ram_dump.name, dumpformat, flags)
                 # trigger event
                 self.context.trigger('memory_dumped', memdump_path=ram_dump.name)
+                if self.keep_dump:
+                    self.logger.info("Keeping memory dump at %s", self.keep_dump_path)
+                    shutil.move(ram_dump.name, str(self.keep_dump_path))
 
     def prepare_forensic_session(self, event):
         memdump_path = event.memdump_path
