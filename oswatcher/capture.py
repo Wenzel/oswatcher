@@ -11,7 +11,7 @@ from tempfile import NamedTemporaryFile, TemporaryDirectory, gettempdir
 
 # local
 from oswatcher.model import OS
-from oswatcher.utils import get_hard_disk
+from oswatcher.utils import get_hard_drive_path
 
 # 3rd
 import libvirt
@@ -42,7 +42,7 @@ class QEMUDomainContextFactory(QEMUContextFactory):
         self.domain_tmp_f.write(xml)
         self.domain_tmp_f.flush()
         # find domain qcow path
-        qcow_path = Path(get_hard_disk(domain))
+        qcow_path = Path(get_hard_drive_path(domain))
         # storage path
         self.osw_storage_path = TemporaryDirectory(prefix="osw-instances-",
                                                    dir=gettempdir())
