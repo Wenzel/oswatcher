@@ -1,5 +1,6 @@
 import stat
 from enum import Enum
+from uuid import uuid4
 
 from py2neo.ogm import GraphObject, Property, RelatedTo
 
@@ -17,6 +18,7 @@ class InodeType(Enum):
 
 class OS(GraphObject):
     # properties
+    id = Property()
     name = Property()
     release_date = Property()
 
@@ -27,6 +29,7 @@ class OS(GraphObject):
 
     def __init__(self, name, release_date):
         super().__init__()
+        self.id = str(uuid4())
         self.name = name
         self.release_date = release_date
 
