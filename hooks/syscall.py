@@ -13,9 +13,11 @@ class SyscallTableHook(Hook):
         super().__init__(parameters)
         # config
         self.graph = None
+        self.os_node = None
         self.neo4j_enabled = self.configuration.get('neo4j_db', False)
         if self.neo4j_enabled:
             self.graph = self.configuration['neo4j']['graph']
+            self.os_node = self.configuration['neo4j']['OS']
         self.debug = self.configuration.get('debug', False)
         self.context.subscribe('forensic_session', self.extract_syscall_table)
 
@@ -54,12 +56,9 @@ class SyscallTableHook(Hook):
         return sdt
 
     def insert_neo4j_db(self, sdt):
-        syscall_nodes = []
         for table_name, table in sdt.items():
             for syscall in table:
                 syscall_node = Syscall(table_name, syscall['Index'], syscall['Symbol'], hex(syscall['Address']))
+                syscall_node.owned_by.add(self.os_node)
+                self.os_node.syscalls.add(syscall_node)
                 self.graph.push(syscall_node)
-                syscall_nodes.append(syscall_node)
-        # signal the operating system Hook that the syscalls has been
-        # inserted, to add the relationship
-        self.context.trigger('syscalls_inserted', syscalls=syscall_nodes)
