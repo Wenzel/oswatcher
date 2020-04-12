@@ -11,6 +11,9 @@
     "hooks":
     [
         {
+            "name": "hooks.filesystem.LibguestfsHook"
+        },
+        {
             "name": "hooks.filesystem.FilesystemHook",
             "configuration":
             {
