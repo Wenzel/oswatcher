@@ -350,7 +350,7 @@ class Neo4jFilesystemHook(Hook):
         # commit transaction
         self.tx.commit()
         # update OS node
-        self.os_node.root_fileystem.add(self.root_g_inode)
+        self.os_node.root_filesystem.add(self.root_g_inode)
         self.root_g_inode.owned_by.add(self.os_node)
         # push root relationship
         self.graph.push(self.root_g_inode)

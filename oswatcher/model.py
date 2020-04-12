@@ -24,7 +24,7 @@ class OS(GraphObject):
     release_date = Property()
 
     # relationships
-    root_fileystem = RelatedTo("GraphInode", "OWNS_FILESYSTEM")
+    root_filesystem = RelatedTo("GraphInode", "OWNS_FILESYSTEM")
     syscalls = RelatedTo("Syscall", "OWNS_SYSCALL")
     processes = RelatedTo("Process", "OWNS_PROCESS")
 
