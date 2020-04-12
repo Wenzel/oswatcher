@@ -28,8 +28,10 @@ class OS(GraphObject):
     syscalls = RelatedTo("Syscall", "OWNS_SYSCALL")
     processes = RelatedTo("Process", "OWNS_PROCESS")
 
-    def __init__(self, name, release_date, os_info):
+    def __init__(self, name, release_date=None, os_info=None):
         super().__init__()
+        if os_info is None:
+            os_info = {}
         self.id = str(uuid4())
         self.name = name
         self.type = os_info.get('os_type', 'Unknown')

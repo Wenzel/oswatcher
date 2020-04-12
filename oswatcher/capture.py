@@ -134,6 +134,7 @@ def capture_main(args):
     if neo4j.get('enabled'):
         logging.info('Connect to Neo4j DB')
         graph = Graph(password=DB_PASSWORD)
+        hooks_config['configuration']['neo4j'] = {}
         # insert graph object into general hook configuration
         hooks_config['configuration']['graph'] = graph
         # handle 'delete' key
@@ -153,6 +154,13 @@ def capture_main(args):
             # replace = True and an OS already exists
             logging.info('Deleting previous OS %s', vm_name)
             graph.run(SUBGRAPH_DELETE_OS.format(vm_name))
+        # init new OS node
+        os_node = OS(vm_name)
+        # create it already, so transactions will work in hooks
+        logging.info('Creating OS node %s', os_node.name)
+        graph.create(os_node)
+        # make it available to all hooks via general configuration
+        hooks_config['configuration']['neo4j']['OS'] = os_node
 
     # use default desktop ready delay if unset
     if "desktop_ready_delay" not in hooks_config['configuration']:
@@ -168,3 +176,10 @@ def capture_main(args):
         with Environment(context, hooks_config) as environment:
             logging.info('Capturing %s', vm_name)
             protocol(environment)
+
+    # finalise db insertion
+    if neo4j.get('enabled'):
+        # push OS node updates
+        graph = hooks_config['configuration']['graph']
+        os_node = hooks_config['configuration']['neo4j']['OS']
+        graph.push(os_node)
