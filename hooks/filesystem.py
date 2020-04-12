@@ -7,7 +7,7 @@ from tempfile import NamedTemporaryFile
 from pathlib import Path
 
 # local
-from oswatcher.model import GraphInode, InodeType
+from oswatcher.model import GraphInode, InodeType, OSType
 from oswatcher.utils import get_hard_drive_path
 
 # 3rd
@@ -66,6 +66,21 @@ class Inode:
 
     @property
     @functools.lru_cache()
+    def is_setuid(self):
+        return True if self.status['st_mode'] & stat.S_ISUID else False
+
+    @property
+    @functools.lru_cache()
+    def is_setgid(self):
+        return True if self.status['st_mode'] & stat.S_ISGID else False
+
+    @property
+    @functools.lru_cache()
+    def is_sticky(self):
+        return True if self.status['st_mode'] & stat.S_ISVTX else False
+
+    @property
+    @functools.lru_cache()
     def inode_type_value(self):
         return self.inode_type.value
 
@@ -114,7 +129,11 @@ class LibguestfsHook(Hook):
             detected = True
             # capture first detected OS
             main_partition = os_partitions[0]
-            self.os_type = self.gfs.inspect_get_type(main_partition)
+            os_type_str = self.gfs.inspect_get_type(main_partition)
+            try:
+                self.os_type = OSType[os_type_str.capitalize()]
+            except KeyError:
+                raise RuntimeError("Unhandled OS type {}".format(os_type_str.capitalize()))
 
         self.logger.debug('Mounting filesystem')
         self.gfs.mount_ro(main_partition, '/')
@@ -122,16 +141,16 @@ class LibguestfsHook(Hook):
         if not detected:
             # quick guess of ostype based on /proc presence
             if self.gfs.is_dir('/proc'):
-                self.os_type = 'Linux'
+                self.os_type = OSType('Linux')
             else:
-                self.os_type = 'Windows'
+                self.os_type = OSType('Windows')
         # build os_info
         os_info = {
             'os_type': self.os_type
         }
-        self.logger.info("OS type: %s", self.os_type)
+        self.logger.info("OS type: %s", self.os_type.name)
         # update OS node
-        self.os_node.type = os_info['os_type']
+        self.os_node.type = os_info['os_type'].name
         # emit triggers
         self.context.trigger('detected_os_info', os_info=os_info)
         self.context.trigger('guestfs_instance', gfs=self.gfs)
@@ -333,13 +352,19 @@ class Neo4jFilesystemHook(Hook):
         self.os_node = self.configuration['neo4j']['OS']
         self.root_g_inode = None
         self.tx = None
+        self.os_info = None
         self.fs = {}
+        self.context.subscribe('detected_os_info', self.get_os_info)
         self.context.subscribe('filesystem_capture_begin', self.fs_capture_begin)
         self.context.subscribe('filesystem_capture_end', self.fs_capture_end)
         self.context.subscribe('filesystem_new_inode', self.process_new_inode)
         self.context.subscribe('filesystem_new_child_inode', self.process_new_child)
         self.context.subscribe('filesystem_end_inode', self.process_end_inode)
         self.context.subscribe('security_checksec_bin', self.process_checksec_file)
+
+    def get_os_info(self, event):
+        """SEE signal handler to simply retrieve the os_info"""
+        self.os_info = event.os_info
 
     def fs_capture_begin(self, event):
         # start py2neo transaction
@@ -358,7 +383,7 @@ class Neo4jFilesystemHook(Hook):
     def process_new_inode(self, event):
         inode = event.inode
         # create graph object
-        g_inode = GraphInode(inode)
+        g_inode = GraphInode(inode, self.os_info['os_type'])
         # add to fs dict for process_new_child callback
         self.fs[inode.str_path] = g_inode
         # set root_g_inode

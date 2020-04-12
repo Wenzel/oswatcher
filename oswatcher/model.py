@@ -5,6 +5,11 @@ from uuid import uuid4
 from py2neo.ogm import GraphObject, Property, RelatedTo
 
 
+class OSType(Enum):
+    Linux = 1
+    Windows = 2
+
+
 class InodeType(Enum):
     DIR = stat.S_IFDIR
     CHR = stat.S_IFCHR
@@ -40,6 +45,9 @@ class GraphInode(GraphObject):
     # properties
     name = Property()
     size = Property()
+    setuid = Property()
+    setgid = Property()
+    sticky = Property()
     md5sum = Property()
     sha1sum = Property()
     sha256sum = Property()
@@ -63,7 +71,7 @@ class GraphInode(GraphObject):
     children = RelatedTo("GraphInode", "HAS_CHILD")
     owned_by = RelatedTo("OS", "OWNED_BY")
 
-    def __init__(self, inode):
+    def __init__(self, inode, os_type):
         super().__init__()
         self.name = inode.name
         # if guestfs.is_file(self.s_filepath) and checksums:
@@ -76,7 +84,10 @@ class GraphInode(GraphObject):
         self.size = inode.size
         self.mode = inode.mode
         self.inode_type = inode.inode_type_value
-        self.checksec = False
+        if os_type == OSType.Linux:
+            self.setuid = inode.is_setuid
+            self.setgid = inode.is_setgid
+            self.sticky = inode.is_sticky
 
 
 class Syscall(GraphObject):
