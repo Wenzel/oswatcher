@@ -324,7 +324,7 @@ class Neo4jFilesystemHook(Hook):
     def __init__(self, parameters):
         super().__init__(parameters)
         # config
-        self.graph = self.configuration['graph']
+        self.graph = self.configuration['neo4j']['graph']
         self.root_g_inode = None
         self.tx = None
         self.fs = {}

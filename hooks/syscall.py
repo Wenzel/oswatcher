@@ -12,8 +12,10 @@ class SyscallTableHook(Hook):
     def __init__(self, parameters):
         super().__init__(parameters)
         # config
-        self.graph = self.configuration.get('graph', None)
+        self.graph = None
         self.neo4j_enabled = self.configuration.get('neo4j_db', False)
+        if self.neo4j_enabled:
+            self.graph = self.configuration['neo4j']['graph']
         self.debug = self.configuration.get('debug', False)
         self.context.subscribe('forensic_session', self.extract_syscall_table)
 

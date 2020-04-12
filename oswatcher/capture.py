@@ -136,7 +136,7 @@ def capture_main(args):
         graph = Graph(password=DB_PASSWORD)
         hooks_config['configuration']['neo4j'] = {}
         # insert graph object into general hook configuration
-        hooks_config['configuration']['graph'] = graph
+        hooks_config['configuration']['neo4j']['graph'] = graph
         # handle 'delete' key
         # delete entire graph ?
         delete = neo4j.get('delete')
@@ -180,6 +180,6 @@ def capture_main(args):
     # finalise db insertion
     if neo4j.get('enabled'):
         # push OS node updates
-        graph = hooks_config['configuration']['graph']
+        graph = hooks_config['configuration']['neo4j']['graph']
         os_node = hooks_config['configuration']['neo4j']['OS']
         graph.push(os_node)
