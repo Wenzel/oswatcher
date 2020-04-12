@@ -159,9 +159,6 @@ To visualize the filesystem in `Neo4j`, include the `FilesystemHook` and the `Ne
     "hooks":
     [
         {
-            "name": "hooks.system.OperatingSystemHook"
-        },
-        {
             "name": "hooks.filesystem.LibguestfsHook"
         },
         {
