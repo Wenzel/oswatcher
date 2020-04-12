@@ -13,9 +13,11 @@ class ProcessListHook(Hook):
         super().__init__(parameters)
         # config
         self.graph = None
+        self.os_node = None
         self.neo4j_enabled = self.configuration.get('neo4j_db', False)
         if self.neo4j_enabled:
             self.graph = self.configuration['neo4j']['graph']
+            self.os_node = self.configuration['neo4j']['OS']
         self.context.subscribe('forensic_session', self.extract_process_list)
 
     def extract_process_list(self, event):
@@ -57,12 +59,9 @@ class ProcessListHook(Hook):
 
     def insert_neo4j_db(self, processes):
         self.logger.info('Inserting processs list into database')
-        process_nodes = []
         for p in processes:
             proc_node = Process(p['name'], p['pid'], p['ppid'],
                                 p['thread_count'], p['handle_count'], p['wow64'])
+            proc_node.owned_by.add(self.os_node)
+            self.os_node.processes.add(proc_node)
             self.graph.push(proc_node)
-            process_nodes.append(proc_node)
-        # signal the operating system Hook that the processes has been
-        # inserted, to add the relationship
-        self.context.trigger('processes_inserted', processes=process_nodes)
