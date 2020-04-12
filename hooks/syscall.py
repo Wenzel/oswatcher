@@ -14,7 +14,7 @@ class SyscallTableHook(Hook):
         # config
         self.graph = None
         self.os_node = None
-        self.neo4j_enabled = self.configuration.get('neo4j_db', False)
+        self.neo4j_enabled = self.configuration.get('neo4j', False)
         if self.neo4j_enabled:
             self.graph = self.configuration['neo4j']['graph']
             self.os_node = self.configuration['neo4j']['OS']

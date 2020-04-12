@@ -90,7 +90,7 @@ class LibguestfsHook(Hook):
         super().__init__(parameters)
         self.gfs = None
         self.os_type = None
-        self.neo4j = self.configuration.get('neo4j_db', False)
+        self.neo4j = self.configuration.get('neo4j', False)
         self.os_node = None
         if self.neo4j:
             self.os_node = self.configuration['neo4j']['OS']
@@ -326,9 +326,9 @@ class Neo4jFilesystemHook(Hook):
     def __init__(self, parameters):
         super().__init__(parameters)
         # config
-        self.neo4j_enabled = self.configuration.get('neo4j_db', False)
+        self.neo4j_enabled = self.configuration.get('neo4j', False)
         if not self.neo4j_enabled:
-            raise RuntimeError('Neo4j plugin selected but neo4j_db is disabled in configuration')
+            raise RuntimeError('Neo4j plugin selected but neo4j is disabled in configuration')
         self.graph = self.configuration['neo4j']['graph']
         self.os_node = self.configuration['neo4j']['OS']
         self.root_g_inode = None

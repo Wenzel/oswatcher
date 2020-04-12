@@ -130,7 +130,7 @@ def capture_main(args):
         hooks_config['configuration'] = {}
 
     # Neo4j required ?
-    neo4j = hooks_config['configuration'].get('neo4j_db', {})
+    neo4j = hooks_config['configuration'].get('neo4j', {})
     if neo4j.get('enabled'):
         logging.info('Connect to Neo4j DB')
         graph = Graph(password=DB_PASSWORD)
