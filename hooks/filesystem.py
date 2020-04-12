@@ -90,6 +90,10 @@ class LibguestfsHook(Hook):
         super().__init__(parameters)
         self.gfs = None
         self.os_type = None
+        self.neo4j = self.configuration.get('neo4j_db', False)
+        self.os_node = None
+        if self.neo4j:
+            self.os_node = self.configuration['neo4j']['OS']
         self.context.subscribe('protocol_start', self.init_libguestfs)
 
     def init_libguestfs(self, event):
@@ -126,6 +130,8 @@ class LibguestfsHook(Hook):
             'os_type': self.os_type
         }
         self.logger.info("OS type: %s", self.os_type)
+        # update OS node
+        self.os_node.type = os_info['os_type']
         # emit triggers
         self.context.trigger('detected_os_info', os_info=os_info)
         self.context.trigger('guestfs_instance', gfs=self.gfs)
@@ -256,10 +262,6 @@ class FilesystemHook(Hook):
         root_inode = self.walk_capture(root)
         # cleanup inode related resources
         root_inode.close()
-        # signal the operating system hook
-        # that the FS has been inserted
-        # and send it the root_inode to build the relationship
-        # (used by Neo4j)
         self.context.trigger('filesystem_capture_end', root=root_inode)
 
     def walk_count(self, node):
@@ -324,7 +326,11 @@ class Neo4jFilesystemHook(Hook):
     def __init__(self, parameters):
         super().__init__(parameters)
         # config
+        self.neo4j_enabled = self.configuration.get('neo4j_db', False)
+        if not self.neo4j_enabled:
+            raise RuntimeError('Neo4j plugin selected but neo4j_db is disabled in configuration')
         self.graph = self.configuration['neo4j']['graph']
+        self.os_node = self.configuration['neo4j']['OS']
         self.root_g_inode = None
         self.tx = None
         self.fs = {}
@@ -343,7 +349,11 @@ class Neo4jFilesystemHook(Hook):
     def fs_capture_end(self, event):
         # commit transaction
         self.tx.commit()
-        self.context.trigger('neo4jfs_capture_end', root=self.root_g_inode)
+        # update OS node
+        self.os_node.root_fileystem.add(self.root_g_inode)
+        self.root_g_inode.owned_by.add(self.os_node)
+        # push root relationship
+        self.graph.push(self.root_g_inode)
 
     def process_new_inode(self, event):
         inode = event.inode
