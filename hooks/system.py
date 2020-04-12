@@ -15,10 +15,12 @@ class OperatingSystemHook(Hook):
     def __init__(self, parameters):
         super().__init__(parameters)
         self.os = None
+        self.os_info = None
         # config
         self.graph = self.configuration['graph']
         self.domain_name = self.configuration['domain_name']
         self.context.subscribe('protocol_start', self.build_operating_system)
+        self.context.subscribe('detected_os_info', self.add_os_info)
         self.context.subscribe('neo4jfs_capture_end', self.add_filesystem)
         self.context.subscribe('syscalls_inserted', self.add_syscalls)
         self.context.subscribe('processes_inserted', self.add_processes)
@@ -39,7 +41,12 @@ class OperatingSystemHook(Hook):
             else:
                 release_date = metadata['release_date']
                 self.logger.info('OS release date: %s', release_date)
-        self.os = OS(self.domain_name, release_date)
+        self.os = OS(self.domain_name, release_date, self.os_info)
+
+    def add_os_info(self, event):
+        os_info = event.os_info
+        # OS object is not created yet
+        self.os_info = os_info
 
     def add_filesystem(self, event):
         logging.info('Adding root filesystem to OS node')

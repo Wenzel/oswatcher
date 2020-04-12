@@ -20,6 +20,7 @@ class OS(GraphObject):
     # properties
     id = Property()
     name = Property()
+    type = Property()
     release_date = Property()
 
     # relationships
@@ -27,10 +28,11 @@ class OS(GraphObject):
     syscalls = RelatedTo("Syscall", "OWNS_SYSCALL")
     processes = RelatedTo("Process", "OWNS_PROCESS")
 
-    def __init__(self, name, release_date):
+    def __init__(self, name, release_date, os_info):
         super().__init__()
         self.id = str(uuid4())
         self.name = name
+        self.type = os_info.get('os_type', 'Unknown')
         self.release_date = release_date
 
 

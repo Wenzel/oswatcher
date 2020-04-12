@@ -5,7 +5,6 @@ import shutil
 import functools
 from tempfile import NamedTemporaryFile
 from pathlib import Path
-from contextlib import contextmanager
 
 # local
 from oswatcher.model import GraphInode, InodeType
@@ -85,36 +84,60 @@ class Inode:
         return magic.from_file(self.local_file, mime=True)
 
 
-@contextmanager
-def guestfs_instance(self):
-    self.logger.info('Initializing libguestfs')
-    gfs = guestfs.GuestFS(python_return_dict=True)
-    # attach libvirt domain
-    qcow_path = get_hard_drive_path(self.context.domain)
-    self.logger.debug('Hard drive: %s', qcow_path)
-    gfs.add_libvirt_dom(self.context.domain, readonly=True)
-    self.logger.debug('Running libguestfs backend')
-    gfs.launch()
-    try:
-        os_partitions = gfs.inspect_os()
+class LibguestfsHook(Hook):
+
+    def __init__(self, parameters):
+        super().__init__(parameters)
+        self.gfs = None
+        self.os_type = None
+        self.context.subscribe('protocol_start', self.init_libguestfs)
+
+    def init_libguestfs(self, event):
+        self.logger.info('Initializing libguestfs')
+        self.gfs = guestfs.GuestFS(python_return_dict=True)
+        # attach libvirt domain
+        qcow_path = get_hard_drive_path(self.context.domain)
+        self.logger.debug('Hard drive: %s', qcow_path)
+        self.gfs.add_libvirt_dom(self.context.domain, readonly=True)
+        self.logger.debug('Running libguestfs backend')
+        self.gfs.launch()
+        os_partitions = self.gfs.inspect_os()
+        detected = False
         if len(os_partitions) == 0:
-            main_partition = gfs.list_partitions()[0]
+            main_partition = self.gfs.list_partitions()[0]
             self.logger.warning("No OS detected, using first partition: %s", main_partition)
         else:
+            detected = True
             # capture first detected OS
             main_partition = os_partitions[0]
+            self.os_type = self.gfs.inspect_get_type(main_partition)
+
         self.logger.debug('Mounting filesystem')
-        gfs.mount_ro(main_partition, '/')
-        yield gfs
-    finally:
+        self.gfs.mount_ro(main_partition, '/')
+        # now that fs is mounted we call inspect it if we need it
+        if not detected:
+            # quick guess of ostype based on /proc presence
+            if self.gfs.is_dir('/proc'):
+                self.os_type = 'Linux'
+            else:
+                self.os_type = 'Windows'
+        # build os_info
+        os_info = {
+            'os_type': self.os_type
+        }
+        self.logger.info("OS type: %s", self.os_type)
+        # emit triggers
+        self.context.trigger('detected_os_info', os_info=os_info)
+        self.context.trigger('guestfs_instance', gfs=self.gfs)
+
+    def cleanup(self):
         # shutdown
         self.logger.debug('shutdown libguestfs')
-        gfs.umount_all()
-        gfs.shutdown()
+        self.gfs.umount_all()
+        self.gfs.shutdown()
 
 
 class FilesystemHook(Hook):
-
     """
     The FilesystemHook will walk through the guest main filesystem using libguestfs.
     The main filesystem is either the main partition, determined by OS inspection methods from libguestfs,
@@ -149,6 +172,7 @@ class FilesystemHook(Hook):
         self.total_entries = 0
         self.time_last_update = 0
         self.context.subscribe('offline', self.capture_fs)
+        self.context.subscribe('guestfs_instance', self.get_guestfs_instance)
 
     def filter_node(self, inode: Inode):
         """Use filters defined in hook configuration to determine if
@@ -214,25 +238,29 @@ class FilesystemHook(Hook):
 
         return []
 
-    def capture_fs(self, event):
-        with guestfs_instance(self) as gfs:
-            self.gfs = gfs
-            root = Path('/')
-            if self.enumerate:
-                self.logger.info('Enumerating entries')
-                self.walk_count(root)
-            self.logger.info('Capturing filesystem')
-            self.time_last_update = time.time()
+    def get_guestfs_instance(self, event):
+        """SEE signal handler to simply retrieve the libguestfs instance"""
+        self.gfs = event.gfs
 
-            self.context.trigger('filesystem_capture_begin')
-            root_inode = self.walk_capture(root)
-            # cleanup inode related resources
-            root_inode.close()
-            # signal the operating system hook
-            # that the FS has been inserted
-            # and send it the root_inode to build the relationship
-            # (used by Neo4j)
-            self.context.trigger('filesystem_capture_end', root=root_inode)
+    def capture_fs(self, event):
+        if self.gfs is None:
+            raise RuntimeError('Hook didnt receive libguestfs instance')
+        root = Path('/')
+        if self.enumerate:
+            self.logger.info('Enumerating entries')
+            self.walk_count(root)
+        self.logger.info('Capturing filesystem')
+        self.time_last_update = time.time()
+
+        self.context.trigger('filesystem_capture_begin')
+        root_inode = self.walk_capture(root)
+        # cleanup inode related resources
+        root_inode.close()
+        # signal the operating system hook
+        # that the FS has been inserted
+        # and send it the root_inode to build the relationship
+        # (used by Neo4j)
+        self.context.trigger('filesystem_capture_end', root=root_inode)
 
     def walk_count(self, node):
         self.total_entries += 1
@@ -384,6 +412,7 @@ class GitFilesystemHook(Hook):
     - commit_message: (optional) specifies the commit message to be used
     - remove_exclusion: (optional) a list of files to avoid removing from the old filesystem
     """
+
     def __init__(self, parameters):
         super().__init__(parameters)
         self.repo_path = Path(self.configuration['repo'])
