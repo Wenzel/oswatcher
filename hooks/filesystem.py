@@ -174,7 +174,6 @@ class FilesystemHook(Hook):
                             on the real filesystem capture, which can be long
     log_progress: Optional - Whether we should display a status update of the capture in the logs
     log_progress_delay: Optional - How often to update the capture progress status
-    inode_checksums: Optional - Whether we should compute the checksum on each Inodes
     filter_exclude: Optional - Define exclude filesystem filters for the capture
                         Filter can be defined using 'extensions' or 'mimes' (MIME types)
                         Specifying both will result in 'extensions' being applied first
@@ -187,7 +186,6 @@ class FilesystemHook(Hook):
         self.enumerate = self.configuration.get('enumerate', False)
         self.log_progress = self.configuration.get('log_progress', True)
         self.log_progress_delay = int(self.configuration.get('log_progress_delay', 0))
-        self.inode_checksums = self.configuration.get('inode_checksums', False)
         self.filter_include = self.configuration.get('filter_include')
         self.filter_exclude = self.configuration.get('filter_exclude')
 
