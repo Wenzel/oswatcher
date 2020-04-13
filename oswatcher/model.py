@@ -44,6 +44,7 @@ class OS(GraphObject):
 class GraphInode(GraphObject):
     # properties
     name = Property()
+    path = Property()
     size = Property()
     setuid = Property()
     setgid = Property()
@@ -74,6 +75,7 @@ class GraphInode(GraphObject):
     def __init__(self, inode, os_type):
         super().__init__()
         self.name = inode.name
+        self.path = inode.str_path
         # if guestfs.is_file(self.s_filepath) and checksums:
         #     # checksums
         #     self.md5sum = guestfs.checksum('md5', self.s_filepath)
