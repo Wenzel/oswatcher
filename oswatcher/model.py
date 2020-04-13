@@ -76,13 +76,6 @@ class GraphInode(GraphObject):
         super().__init__()
         self.name = inode.name
         self.path = inode.str_path
-        # if guestfs.is_file(self.s_filepath) and checksums:
-        #     # checksums
-        #     self.md5sum = guestfs.checksum('md5', self.s_filepath)
-        #     self.sha1sum = guestfs.checksum('sha1', self.s_filepath)
-        #     self.sha256sum = guestfs.checksum('sha256', self.s_filepath)
-        #     self.sha512sum = guestfs.checksum('sha512', self.s_filepath)
-
         self.size = inode.size
         self.mode = inode.mode
         self.inode_type = inode.inode_type_value
