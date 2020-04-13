@@ -167,8 +167,7 @@ To visualize the filesystem in `Neo4j`, include the `FilesystemHook` and the `Ne
             {
                 "enumerate": true,
                 "log_progress": true,
-                "log_progress_delay": 10,
-                "inode_checksums": false
+                "log_progress_delay": 10
             }
         },
         {
