@@ -17,7 +17,7 @@ class ChecksecFile:
     pie: str
     rpath: bool
     runpath: bool
-    symtables: bool
+    symbols: bool
     fortify_source: bool
     fortified: bool
     fortifyable: bool
@@ -46,7 +46,7 @@ class SecurityHook(Hook):
             # run checksec and load json
             cmdline = [self.checksec, '--output=json', f'--file={filepath}']
             checksec_data = json.loads(subprocess.check_output(cmdline).decode())
-            profile = checksec_data['file']
+            profile = checksec_data[filepath]
             self.logger.debug('profile: %s', profile)
 
             def str2bool(string):
@@ -58,11 +58,11 @@ class SecurityHook(Hook):
             pie = profile['pie']
             rpath = str2bool(profile['rpath'])
             runpath = str2bool(profile['runpath'])
-            symtables = str2bool(profile['symtables'])
+            symbols = str2bool(profile['symbols'])
             fortify_source = str2bool(profile['fortify_source'])
             fortified = profile['fortified']
             fortifyable = profile['fortify-able']
 
             checksec_file = ChecksecFile(relro, canary, nx, pie, rpath, runpath,
-                                         symtables, fortify_source, fortified, fortifyable)
+                                         symbols, fortify_source, fortified, fortifyable)
             self.context.trigger('security_checksec_bin', inode=inode, checksec_file=checksec_file)

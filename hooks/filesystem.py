@@ -414,7 +414,7 @@ class Neo4jFilesystemHook(Hook):
         self.fs[str(inode.path)].pie = checksec_file.pie
         self.fs[str(inode.path)].rpath = checksec_file.rpath
         self.fs[str(inode.path)].runpath = checksec_file.runpath
-        self.fs[str(inode.path)].symtables = checksec_file.symtables
+        self.fs[str(inode.path)].symbols = checksec_file.symbols
         self.fs[str(inode.path)].fortify_source = checksec_file.fortify_source
         self.fs[str(inode.path)].fortified = checksec_file.fortified
         self.fs[str(inode.path)].fortifyable = checksec_file.fortifyable

@@ -63,7 +63,7 @@ class GraphInode(GraphObject):
     pie = Property()
     rpath = Property()
     runpath = Property()
-    symtables = Property()
+    symbols = Property()
     fortify_source = Property()
     fortified = Property()
     fortifyable = Property()
