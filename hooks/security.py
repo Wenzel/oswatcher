@@ -40,11 +40,11 @@ class SecurityHook(Hook):
         # event args
         inode = event.inode
 
-        mime = event.mime_type
-        filepath = event.str_path
+        mime = inode.mime_type
+        filepath = inode.str_path
         if re.match(r'application/x(-pie)?-(executable|sharedlib)', mime):
             # run checksec and load json
-            cmdline = [self.checksec, '--output', 'json', '--file', filepath]
+            cmdline = [self.checksec, '--output=json', f'--file={filepath}']
             checksec_data = json.loads(subprocess.check_output(cmdline).decode())
             profile = checksec_data['file']
             self.logger.debug('profile: %s', profile)
