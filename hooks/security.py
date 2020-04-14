@@ -11,7 +11,7 @@ from see import Hook
 
 @dataclass
 class ChecksecFile:
-    relro: bool
+    relro: str
     canary: bool
     nx: bool
     pie: str
@@ -52,7 +52,7 @@ class SecurityHook(Hook):
             def str2bool(string):
                 return string.lower() in ['yes', 'true', 'y', '1']
 
-            relro = True if profile['relro'] in ["full", "partial"] else False
+            relro = profile['relro']
             canary = str2bool(profile['canary'])
             nx = str2bool(profile['nx'])
             pie = profile['pie']
