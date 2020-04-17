@@ -60,11 +60,13 @@ class SecurityHook(Hook):
         # event args
         inode = event.inode
 
-        mime = inode.py_magic_type
+        mime = inode.file_magic_type
         filepath = inode.path
-        local_filepath = inode.local_file
         if re.match(r'application/x(-pie)?-(executable|sharedlib)', mime):
             self.logger.debug('%s: %s', filepath, mime)
+            # this is a heavy call (download the file on the host filesystem through libguestfs appliance)
+            # call it here once we filtered on the mime type provided by the file utility
+            local_filepath = inode.local_file
             # run checksec and load json
             cmdline = [self.checksec, '--output=json', f'--file={local_filepath}']
             try:
