@@ -61,30 +61,15 @@ class SecurityHook(Hook):
         inode = event.inode
 
         mime = inode.py_magic_type
-        filepath = inode.str_path
+        filepath = inode.path
+        local_filepath = inode.local_file
         if re.match(r'application/x(-pie)?-(executable|sharedlib)', mime):
             self.logger.debug('%s: %s', filepath, mime)
             # run checksec and load json
-            cmdline = [self.checksec, '--output=json', f'--file={filepath}']
+            cmdline = [self.checksec, '--output=json', f'--file={local_filepath}']
             try:
-                checksec_data = json.loads(subprocess.check_output(cmdline).decode())
-                profile = checksec_data[filepath]
-                self.logger.debug('profile: %s', profile)
-
-                def str2bool(string):
-                    return string.lower() in ['yes', 'true', 'y', '1']
-
-                relro = profile['relro']
-                canary = str2bool(profile['canary'])
-                nx = str2bool(profile['nx'])
-                pie = profile['pie']
-                rpath = str2bool(profile['rpath'])
-                runpath = str2bool(profile['runpath'])
-                symbols = str2bool(profile['symbols'])
-                fortify_source = str2bool(profile['fortify_source'])
-                fortified = profile['fortified']
-                fortifyable = profile['fortify-able']
-            except (subprocess.CalledProcessError, KeyError):
+                output = subprocess.check_output(cmdline).decode()
+            except subprocess.CalledProcessError:
                 self.failed_count += 1
                 self.logger.warning("Checksec failed to analyze %s (%s)", filepath, inode.filecmd_output())
                 if self.keep_binaries:
@@ -94,6 +79,37 @@ class SecurityHook(Hook):
                     self.logger.warning("Dumping as %s", dst)
                     shutil.copy(inode.local_file, dst)
                 return
+            else:
+                # load checksec JSON data and extract keys
+                checksec_data = json.loads(subprocess.check_output(cmdline).decode())
+
+                def str2bool(string):
+                    return string.lower() in ['yes', 'true', 'y', '1']
+                try:
+                    profile = checksec_data[local_filepath]
+
+                    relro = profile['relro']
+                    canary = str2bool(profile['canary'])
+                    nx = str2bool(profile['nx'])
+                    pie = profile['pie']
+                    rpath = str2bool(profile['rpath'])
+                    runpath = str2bool(profile['runpath'])
+                    symbols = str2bool(profile['symbols'])
+                    fortify_source = str2bool(profile['fortify_source'])
+                    fortified = profile['fortified']
+                    fortifyable = profile['fortify-able']
+                except KeyError as e:
+                    self.failed_count += 1
+                    self.logger.warning("Error while parsing checksec JSON output on %s (%s). Key %s does not exist",
+                                        filepath, inode.filecmd_output(), e.args[0])
+                    self.logger.warning("Full checksec output: %s", output)
+                    if self.keep_binaries:
+                        # copy file in checksec failed dir
+                        self.keep_binaries_dir.mkdir(parents=True, exist_ok=True)
+                        dst = self.keep_binaries_dir / inode.name
+                        self.logger.warning("Dumping as %s", dst)
+                        shutil.copy(inode.local_file, dst)
+                    return
 
             checksec_file = ChecksecFile(relro, canary, nx, pie, rpath, runpath,
                                          symbols, fortify_source, fortified, fortifyable)
