@@ -92,15 +92,23 @@ class Inode:
         self._gfs.download(self.str_path, self._tmp_local_file.name)
         return self._tmp_local_file.name
 
+    @functools.lru_cache()
+    def filecmd_output(self, mime_option=False):
+        """Run the file utility and returns the output"""
+        if not self.inode_type == InodeType.REG:
+            return None
+        file_cmd = ['file', self.str_path]
+        if mime_option:
+            file_cmd.append('-i')
+        return self._gfs.command(file_cmd).strip()
+
     @property
     @functools.lru_cache()
     def file_magic_type(self):
         """this method is faster than py_magic_type, since it doesn't involve
         downloading the whole file to the host"""
-        if not self.inode_type == InodeType.REG:
-            return None
-        file_mime_cmd = ['file', '-i', self.str_path]
-        m = re.match(r'^.+: (?P<mime_type>.+);.*$', self._gfs.command(file_mime_cmd).strip())
+        file_mime_output = self.filecmd_output(mime_option=True)
+        m = re.match(r'^.+: (?P<mime_type>.+);.*$', file_mime_output)
         return m.group('mime_type')
 
     @property
