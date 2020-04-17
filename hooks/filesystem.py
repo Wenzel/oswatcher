@@ -4,6 +4,7 @@ import stat
 import shutil
 import re
 import functools
+from collections import Counter
 from tempfile import NamedTemporaryFile
 from pathlib import Path
 
@@ -17,6 +18,9 @@ import magic
 from see import Hook
 from git import Repo
 from git.exc import GitCommandError
+
+
+STATS = Counter()
 
 
 class Inode:
@@ -88,6 +92,7 @@ class Inode:
     @property
     @functools.lru_cache()
     def local_file(self):
+        STATS['local_file'] += 1
         self._tmp_local_file = NamedTemporaryFile()
         self._gfs.download(self.str_path, self._tmp_local_file.name)
         return self._tmp_local_file.name
@@ -95,6 +100,7 @@ class Inode:
     @functools.lru_cache()
     def filecmd_output(self, mime_option=False):
         """Run the file utility and returns the output"""
+        STATS['filecmd_output'] += 1
         if not self.inode_type == InodeType.REG:
             return None
         file_cmd = ['file', self.str_path]
@@ -107,6 +113,7 @@ class Inode:
     def file_magic_type(self):
         """this method is faster than py_magic_type, since it doesn't involve
         downloading the whole file to the host"""
+        STATS['file_magic_type'] += 1
         file_mime_output = self.filecmd_output(mime_option=True)
         m = re.match(r'^.+: (?P<mime_type>.+);.*$', file_mime_output)
         return m.group('mime_type')
@@ -114,6 +121,7 @@ class Inode:
     @property
     @functools.lru_cache()
     def py_magic_type(self):
+        STATS['py_magic_type'] += 1
         if not self.inode_type == InodeType.REG:
             return None
         return magic.from_file(self.local_file, mime=True)
@@ -356,6 +364,9 @@ class FilesystemHook(Hook):
                 self.logger.info(node)
             # reset
             self.time_last_update = time.time()
+
+    def cleanup(self):
+        self.logger.info('Inode statistics: %s', STATS)
 
 
 class Neo4jFilesystemHook(Hook):
