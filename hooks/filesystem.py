@@ -2,6 +2,7 @@
 import time
 import stat
 import shutil
+import re
 import functools
 from tempfile import NamedTemporaryFile
 from pathlib import Path
@@ -93,7 +94,18 @@ class Inode:
 
     @property
     @functools.lru_cache()
-    def mime_type(self):
+    def file_magic_type(self):
+        """this method is faster than py_magic_type, since it doesn't involve
+        downloading the whole file to the host"""
+        if not self.inode_type == InodeType.REG:
+            return None
+        file_mime_cmd = ['file', '-i', self.str_path]
+        m = re.match(r'^.+: (?P<mime_type>.+);.*$', self._gfs.command(file_mime_cmd).strip())
+        return m.group('mime_type')
+
+    @property
+    @functools.lru_cache()
+    def py_magic_type(self):
         if not self.inode_type == InodeType.REG:
             return None
         return magic.from_file(self.local_file, mime=True)
@@ -217,7 +229,7 @@ class FilesystemHook(Hook):
             except KeyError:
                 pass
             else:
-                if inode.mime_type in mimes:
+                if inode.py_magic_type in mimes:
                     self.logger.debug('filters_exclude[mimes]: excluding %s', inode.path)
                     return False
 
@@ -241,7 +253,7 @@ class FilesystemHook(Hook):
         except KeyError:
             pass
         else:
-            if inode.mime_type not in mimes:
+            if inode.py_magic_type not in mimes:
                 self.logger.debug('filters_include[mimes]: excluding %s', inode.path)
                 return False
 

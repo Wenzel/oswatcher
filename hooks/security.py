@@ -58,7 +58,7 @@ class SecurityHook(Hook):
         # event args
         inode = event.inode
 
-        mime = inode.mime_type
+        mime = inode.py_magic_type
         filepath = inode.str_path
         if re.match(r'application/x(-pie)?-(executable|sharedlib)', mime):
             self.logger.debug('%s: %s', filepath, mime)
