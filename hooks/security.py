@@ -25,6 +25,18 @@ class ChecksecFile:
 
 
 class SecurityHook(Hook):
+    """
+    Security hook
+    subscribes on filesystem events and runs security tools on binaries
+    configuration:
+    {
+        "keep_failed_binaries": true // optional, whether we should keep the checksec failed binaires
+        "keep_failed_dir": "/path/to/dir" // optional, path to directory where we should keep the failed binaires
+                                                if not provided, a default one will be created in the current
+                                                working directory: "{{ os_uuid }}_checksec_failed"
+
+    }
+    """
 
     CHECKSEC_BIN = Path(__file__).parent.parent / "tools" / "checksec" / "checksec"
 
@@ -34,9 +46,11 @@ class SecurityHook(Hook):
         if not self.CHECKSEC_BIN.exists():
             raise RuntimeError('Cannot find checksec, did you forget to init the submodule ?')
         self.os_node = self.configuration['neo4j']['OS']
-        self.checksec = str(self.CHECKSEC_BIN)
+        self.keep_binaries = self.configuration.get('keep_failed_binaries', False)
         # directory to dump executable on which checksec failed
-        self.checksec_failed = Path.cwd() / f"{self.os_node.id}_checksec_failed"
+        default_checksec_failed_dir = Path.cwd() / f"{self.os_node.id}_checksec_failed"
+        self.keep_binaries_dir = self.configuration.get('keep_failed_dir', default_checksec_failed_dir)
+        self.checksec = str(self.CHECKSEC_BIN)
 
         self.context.subscribe('filesystem_new_file', self.check_file)
 
@@ -69,11 +83,13 @@ class SecurityHook(Hook):
                 fortified = profile['fortified']
                 fortifyable = profile['fortify-able']
             except (subprocess.CalledProcessError, KeyError):
-                # copy file in checksec failed dir
-                self.checksec_failed.mkdir(parents=True, exist_ok=True)
-                dst = self.checksec_failed / inode.name
-                self.logger.warning("Checksec failed to analyze %s (%s). Dumping as %s", filepath, mime, dst)
-                shutil.copy(inode.local_file, dst)
+                self.logger.warning("Checksec failed to analyze %s (%s)", filepath, mime)
+                if self.keep_binaries:
+                    # copy file in checksec failed dir
+                    self.keep_binaries_dir.mkdir(parents=True, exist_ok=True)
+                    dst = self.keep_binaries_dir / inode.name
+                    self.logger.warning("Dumping as %s", dst)
+                    shutil.copy(inode.local_file, dst)
                 return
 
             checksec_file = ChecksecFile(relro, canary, nx, pie, rpath, runpath,
