@@ -25,7 +25,8 @@ STATS = Counter()
 
 class Inode:
 
-    def __init__(self, gfs, node):
+    def __init__(self, logger, gfs, node):
+        self._logger = logger
         self._gfs = gfs
         self._tmp_local_file = None
         # public attributes
@@ -116,6 +117,10 @@ class Inode:
         STATS['file_magic_type'] += 1
         file_mime_output = self.filecmd_output(mime_option=True)
         m = re.match(r'^.+: (?P<mime_type>.+);.*$', file_mime_output)
+        if not m:
+            self._logger.warning('Failed to parse MIME type from file command output: %s: %s',
+                                 self.path, file_mime_output)
+            return None
         return m.group('mime_type')
 
     @property
@@ -328,7 +333,7 @@ class FilesystemHook(Hook):
         # root
         if not name:
             name = node.anchor
-        inode = Inode(self.gfs, node)
+        inode = Inode(self.logger, self.gfs, node)
         # apply filters
         if self.filter_node(inode):
             self.context.trigger('filesystem_new_inode', gfs=self.gfs, inode=inode)
