@@ -116,7 +116,11 @@ class Inode:
         downloading the whole file to the host"""
         STATS['file_magic_type'] += 1
         file_mime_output = self.filecmd_output(mime_option=True)
-        m = re.match(r'^.+: (?P<mime_type>.+);.*$', file_mime_output)
+        # output example
+        # /usr/src/xxx/asm/user.h: /usr/src/xxx/asm/user.h: application/octet-stream
+        # /usr/bin/xz: application/x-pie-executable; charset=binary
+        regex = r'^(.*:)+\s+(?P<mime_type>.*/[^;]+).*$'
+        m = re.match(regex, file_mime_output)
         if not m:
             self._logger.warning('Failed to parse MIME type from file command output: %s: %s',
                                  self.path, file_mime_output)
