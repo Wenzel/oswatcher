@@ -50,6 +50,8 @@ class SecurityHook(Hook):
         # directory to dump executable on which checksec failed
         default_checksec_failed_dir = Path.cwd() / f"{self.os_node.id}_checksec_failed"
         self.keep_binaries_dir = self.configuration.get('keep_failed_dir', default_checksec_failed_dir)
+        self.failed_count = 0
+
         self.checksec = str(self.CHECKSEC_BIN)
 
         self.context.subscribe('filesystem_new_file', self.check_file)
@@ -83,6 +85,7 @@ class SecurityHook(Hook):
                 fortified = profile['fortified']
                 fortifyable = profile['fortify-able']
             except (subprocess.CalledProcessError, KeyError):
+                self.failed_count += 1
                 self.logger.warning("Checksec failed to analyze %s (%s)", filepath, mime)
                 if self.keep_binaries:
                     # copy file in checksec failed dir
@@ -95,3 +98,7 @@ class SecurityHook(Hook):
             checksec_file = ChecksecFile(relro, canary, nx, pie, rpath, runpath,
                                          symbols, fortify_source, fortified, fortifyable)
             self.context.trigger('security_checksec_bin', inode=inode, checksec_file=checksec_file)
+
+    def cleanup(self):
+        if self.failed_count:
+            self.logger.info('Checksec failures count: %s', self.failed_count)
