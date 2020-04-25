@@ -1,11 +1,17 @@
 # 1st
 from dataclasses import dataclass
 from pathlib import Path
+import hashlib
 
 # 3rd
 import lief
 from see import Hook
 from .filesystem import Inode
+from signify.fingerprinter import AuthenticodeFingerprinter
+import asn1
+
+
+global_catFileName = ''
 
 
 @dataclass
@@ -21,6 +27,7 @@ class checkPE:
     imageSize: str
     hasEmbeddedSig: bool
     hasCatSig: bool
+    catFileName: str
     importedLibs: list
 
 
@@ -30,6 +37,7 @@ class StaticAnalyzerHook(Hook):
 
     def __init__(self, parameters):
         super().__init__(parameters)
+        self.catalogs = self.configuration.get('catalogs', False)
         # subscribe on "filesystem_new_file" events
         self.context.subscribe("filesystem_new_file", self.handle_new_file)
 
@@ -46,20 +54,57 @@ class StaticAnalyzerHook(Hook):
 
         return "%.*f%s" % (precision, size, suffix[suffixIndex])
 
-    def has_catSignature(self, gfs, pe_inode):
-        # TODO
-        # 1. Access /Windows/System32/CatRoot
-        if gfs.is_dir('/Windows/System32/CatRoot'):
-            # 2. For each .cat file in /Windows/System32/CatRoot
-            for cat_file in gfs.ls('/Windows/System32/CatRoot'):
-                cat_inode = Inode(gfs, Path(cat_file))
-                self.logger.debug("cat file: %s", cat_file)
-            # 2.1 read file bytes and parse the ASN.1 content
-            # cat_inode.local_file ....
-        # 2.2 compare each OCTET STRING with the PE image hash
-        # (ContentInfo->Digest using lief)
-        # 2.3 if there is a match, the file is catalog-signed,
-        # return true, else return false
+    def search_cat(self, input_stream, sha1Hash, sha256Hash, spcIndirectFound):
+        while not input_stream.eof():
+            tag = input_stream.peek()
+            if tag.typ == asn1.Types.Primitive:
+                tag, value = input_stream.read()
+                if tag.nr == asn1.Numbers.ObjectIdentifier:
+                    if value == '1.3.6.1.4.1.311.2.1.4':
+                        spcIndirectFound = 1
+                elif tag.nr == asn1.Numbers.OctetString:
+                    if spcIndirectFound == 1:
+                        spcIndirectFound = 0
+                        imageHash = value.hex().upper()
+                        if (imageHash == sha256Hash or imageHash == sha1Hash):
+                            return True
+            elif tag.typ == asn1.Types.Constructed:
+                input_stream.enter()
+                catalogFound = self.search_cat(
+                    input_stream, sha1Hash, sha256Hash, spcIndirectFound
+                )
+                if catalogFound:
+                    input_stream.leave()
+                    return True
+                input_stream.leave()
+        return False
+
+    def has_catSignature(self, gfs, folder, pe_inode, sha1Hash, sha256Hash):
+        if gfs.is_dir(folder):
+            for entry in gfs.ls(folder):
+                path_entry = folder + '/' + entry
+                if gfs.is_dir(path_entry):
+                    hasCatSig = self.has_catSignature(
+                        gfs, path_entry, pe_inode, sha1Hash, sha256Hash
+                    )
+                    if hasCatSig:
+                        return True
+                else:
+                    cat_inode = Inode(gfs, Path(path_entry))
+                    cat_file_obj = open(cat_inode.local_file, "rb")
+                    cat_data = cat_file_obj.read()
+                    decoder = asn1.Decoder()
+                    decoder.start(cat_data)
+                    catalogFound = self.search_cat(
+                        decoder, sha1Hash, sha256Hash, 0
+                    )
+                    if catalogFound:
+                        global global_catFileName
+                        global_catFileName = entry
+                        cat_file_obj.close()
+                        return True
+                    cat_file_obj.close()
+            return False
         return False
 
     def handle_new_file(self, event):
@@ -71,8 +116,6 @@ class StaticAnalyzerHook(Hook):
         mime_type = inode.mime_type
 
         if mime_type in self.VALID_MIME_APP:
-
-            self.logger.info("New executable/library: %s", inode.path)
             local_path = inode.local_file
             pe = lief.parse(local_path)
 
@@ -95,9 +138,31 @@ class StaticAnalyzerHook(Hook):
             highEntropyVA = pe.optional_header.has(
                 lief.PE.DLL_CHARACTERISTICS.HIGH_ENTROPY_VA
                 )
+
+            # Authenticode checks (embedded and detached signatures)
             hasEmbeddedSig = pe.has_signature
-            hasCatSig = self.has_catSignature(gfs, inode)
-            # finish has-catSignature: execute only if hasEmbeddedSig is false
+
+            if self.catalogs:
+                hasCatSig = False
+                global global_catFileName
+                if not hasEmbeddedSig:
+                    pe_file_obj = open(local_path, "rb")
+                    fingerprinter = AuthenticodeFingerprinter(pe_file_obj)
+                    fingerprinter.add_authenticode_hashers(
+                        hashlib.sha1, hashlib.sha256
+                    )
+                    hashes = (fingerprinter.hashes()).get('authentihash')
+                    sha1Hash = hashes.get('sha1').hex().upper()
+                    sha256Hash = hashes.get('sha256').hex().upper()
+                    hasCatSig = self.has_catSignature(
+                        gfs, '/Windows/System32/CatRoot', inode,
+                        sha1Hash, sha256Hash
+                    )
+                    pe_file_obj.close()
+            else:
+                hasCatSig = None
+                global global_catFileName
+                global_catFileName = None
 
             # image implementation characteristics
             codeSize = self.formatSize(pe.optional_header.sizeof_code)
@@ -106,9 +171,9 @@ class StaticAnalyzerHook(Hook):
             importedLibs = []
             for importedLib in pe.imports:
                 importedLibs.append(importedLib.name)
-
             check_pe = checkPE(dynamicBase, noSEH, guardCF, forceIntegrity,
                                nxCompat, highEntropyVA, codeSize,
                                numFunctionsExported, imageSize,
-                               hasEmbeddedSig, hasCatSig, importedLibs)
+                               hasEmbeddedSig, hasCatSig,
+                               global_catFileName, importedLibs)
             print(check_pe)
