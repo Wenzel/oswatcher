@@ -50,10 +50,16 @@ class SecurityHook(Hook):
             if not self.CHECKSEC_BIN.exists():
                 raise RuntimeError('Cannot find checksec, did you forget to init the submodule ?')
             self.checksec = str(self.CHECKSEC_BIN)
-        self.os_node = self.configuration['neo4j']['OS']
+        self.neo4j_enabled = self.configuration.get('neo4j', False)
+        if self.neo4j_enabled:
+            self.os_node = self.configuration['neo4j']['OS']
         self.keep_binaries = self.configuration.get('keep_failed_binaries', False)
         # directory to dump executable on which checksec failed
-        default_checksec_failed_dir = Path.cwd() / f"{self.os_node.id}_checksec_failed"
+        if self.neo4j_enabled:
+            os_id = self.os_node.id
+        else:
+            os_id = self.context.domain.name()
+        default_checksec_failed_dir = Path.cwd() / f"{os_id}_checksec_failed"
         self.keep_binaries_dir = self.configuration.get('keep_failed_dir', default_checksec_failed_dir)
         self.failed_count = 0
 

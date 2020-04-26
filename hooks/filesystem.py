@@ -187,7 +187,8 @@ class LibguestfsHook(Hook):
         }
         self.logger.info("OS type: %s", self.os_type.name)
         # update OS node
-        self.os_node.type = os_info['os_type'].name
+        if self.neo4j:
+            self.os_node.type = os_info['os_type'].name
         # emit triggers
         self.context.trigger('detected_os_info', os_info=os_info)
         self.context.trigger('guestfs_instance', gfs=self.gfs)
