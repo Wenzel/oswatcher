@@ -106,7 +106,7 @@ class StaticAnalyzerHook(Hook):
         gfs = event.gfs
 
         # get mime type
-        mime_type = inode.mime_type
+        mime_type = inode.py_magic_type
 
         if mime_type in self.VALID_MIME_APP:
             local_path = inode.local_file
