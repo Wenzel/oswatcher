@@ -1,5 +1,3 @@
-
-
 # sys
 import os
 import sys
@@ -7,6 +5,8 @@ import logging
 import time
 import json
 from pathlib import Path
+from timeit import default_timer as timer
+from datetime import timedelta
 from tempfile import NamedTemporaryFile, TemporaryDirectory, gettempdir
 
 # local
@@ -175,7 +175,13 @@ def capture_main(args):
     with QEMUDomainContextFactory(vm_name, uri) as context:
         with Environment(context, hooks_config) as environment:
             logging.info('Capturing %s', vm_name)
+            start = timer()
             protocol(environment)
+            end = timer()
+            delta = timedelta(seconds=end - start)
+            # remove microseconds
+            duration = str(delta).split('.')[0]
+            logging.info('Capture duration: %s', duration)
 
     # finalise db insertion
     if neo4j.get('enabled'):
