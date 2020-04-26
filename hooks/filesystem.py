@@ -2,7 +2,9 @@
 import time
 import stat
 import shutil
+import re
 import functools
+from collections import Counter
 from tempfile import NamedTemporaryFile
 from pathlib import Path
 
@@ -18,9 +20,13 @@ from git import Repo
 from git.exc import GitCommandError
 
 
+STATS = Counter()
+
+
 class Inode:
 
-    def __init__(self, gfs, node):
+    def __init__(self, logger, gfs, node):
+        self._logger = logger
         self._gfs = gfs
         self._tmp_local_file = None
         # public attributes
@@ -87,13 +93,44 @@ class Inode:
     @property
     @functools.lru_cache()
     def local_file(self):
+        STATS['local_file'] += 1
         self._tmp_local_file = NamedTemporaryFile()
         self._gfs.download(self.str_path, self._tmp_local_file.name)
         return self._tmp_local_file.name
 
+    @functools.lru_cache()
+    def filecmd_output(self, mime_option=False):
+        """Run the file utility and returns the output"""
+        STATS['filecmd_output'] += 1
+        if not self.inode_type == InodeType.REG:
+            return None
+        file_cmd = ['file', self.str_path]
+        if mime_option:
+            file_cmd.append('-i')
+        return self._gfs.command(file_cmd).strip()
+
     @property
     @functools.lru_cache()
-    def mime_type(self):
+    def file_magic_type(self):
+        """this method is faster than py_magic_type, since it doesn't involve
+        downloading the whole file to the host"""
+        STATS['file_magic_type'] += 1
+        file_mime_output = self.filecmd_output(mime_option=True)
+        # output example
+        # /usr/src/xxx/asm/user.h: /usr/src/xxx/asm/user.h: application/octet-stream
+        # /usr/bin/xz: application/x-pie-executable; charset=binary
+        regex = r'^(.*:)+\s+(?P<mime_type>.*/[^;]+).*$'
+        m = re.match(regex, file_mime_output)
+        if not m:
+            self._logger.warning('Failed to parse MIME type from file command output: %s: %s',
+                                 self.path, file_mime_output)
+            return None
+        return m.group('mime_type')
+
+    @property
+    @functools.lru_cache()
+    def py_magic_type(self):
+        STATS['py_magic_type'] += 1
         if not self.inode_type == InodeType.REG:
             return None
         return magic.from_file(self.local_file, mime=True)
@@ -217,7 +254,7 @@ class FilesystemHook(Hook):
             except KeyError:
                 pass
             else:
-                if inode.mime_type in mimes:
+                if inode.py_magic_type in mimes:
                     self.logger.debug('filters_exclude[mimes]: excluding %s', inode.path)
                     return False
 
@@ -241,7 +278,7 @@ class FilesystemHook(Hook):
         except KeyError:
             pass
         else:
-            if inode.mime_type not in mimes:
+            if inode.py_magic_type not in mimes:
                 self.logger.debug('filters_include[mimes]: excluding %s', inode.path)
                 return False
 
@@ -300,7 +337,7 @@ class FilesystemHook(Hook):
         # root
         if not name:
             name = node.anchor
-        inode = Inode(self.gfs, node)
+        inode = Inode(self.logger, self.gfs, node)
         # apply filters
         if self.filter_node(inode):
             self.context.trigger('filesystem_new_inode', gfs=self.gfs, inode=inode)
@@ -336,6 +373,9 @@ class FilesystemHook(Hook):
                 self.logger.info(node)
             # reset
             self.time_last_update = time.time()
+
+    def cleanup(self):
+        self.logger.info('Inode statistics: %s', STATS)
 
 
 class Neo4jFilesystemHook(Hook):
@@ -414,7 +454,7 @@ class Neo4jFilesystemHook(Hook):
         self.fs[str(inode.path)].pie = checksec_file.pie
         self.fs[str(inode.path)].rpath = checksec_file.rpath
         self.fs[str(inode.path)].runpath = checksec_file.runpath
-        self.fs[str(inode.path)].symtables = checksec_file.symtables
+        self.fs[str(inode.path)].symbols = checksec_file.symbols
         self.fs[str(inode.path)].fortify_source = checksec_file.fortify_source
         self.fs[str(inode.path)].fortified = checksec_file.fortified
         self.fs[str(inode.path)].fortifyable = checksec_file.fortifyable
