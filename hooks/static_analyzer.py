@@ -38,9 +38,16 @@ class StaticAnalyzerHook(Hook):
         self.catFileName = ''
         self.catalogs = self.configuration.get('catalogs', False)
         self.keep_binaries = self.configuration.get('keep_failed_binaries', False)
+        self.neo4j_enabled = self.configuration.get('neo4j', False)
+        self.os_node = None
+        if self.neo4j_enabled:
+            self.os_node = self.configuration['neo4j']['OS']
         # directory to dump executable on which checksec failed
-        self.os_node = self.configuration['neo4j']['OS']
-        default_checksec_failed_dir = Path.cwd() / f"{self.os_node.id}_static_analyzer_failed"
+        if self.neo4j_enabled:
+            os_id = self.os_node.id
+        else:
+            os_id = self.context.domain.name()
+        default_checksec_failed_dir = Path.cwd() / f"{os_id}_static_analyzer_failed"
         self.keep_binaries_dir = self.configuration.get('keep_failed_dir', default_checksec_failed_dir)
         # subscribe on "filesystem_new_file" events
         self.context.subscribe("filesystem_new_file", self.handle_new_file)
