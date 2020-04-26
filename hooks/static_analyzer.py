@@ -111,6 +111,9 @@ class StaticAnalyzerHook(Hook):
         if mime_type in self.VALID_MIME_APP:
             local_path = inode.local_file
             pe = lief.parse(local_path)
+            if not pe:
+                self.logger.warning("LIEF failed to parse %s", inode.path)
+                return
 
             # extraction of relevant DLL characteristics
             dynamicBase = pe.optional_header.has(
