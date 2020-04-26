@@ -1,15 +1,17 @@
-# 1st
-from dataclasses import dataclass
-from pathlib import Path
+# std
 import hashlib
 import shutil
+from dataclasses import dataclass
+from pathlib import Path
 
-# 3rd
+# third party
 import lief
 from see import Hook
-from .filesystem import Inode
 from signify.fingerprinter import AuthenticodeFingerprinter
-import asn1
+
+# local
+from .filesystem import Inode
+from oswatcher.utils import asn1
 
 
 @dataclass
