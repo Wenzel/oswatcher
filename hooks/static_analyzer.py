@@ -2,6 +2,7 @@
 from dataclasses import dataclass
 from pathlib import Path
 import hashlib
+import shutil
 
 # 3rd
 import lief
@@ -36,6 +37,11 @@ class StaticAnalyzerHook(Hook):
         super().__init__(parameters)
         self.catFileName = ''
         self.catalogs = self.configuration.get('catalogs', False)
+        self.keep_binaries = self.configuration.get('keep_failed_binaries', False)
+        # directory to dump executable on which checksec failed
+        self.os_node = self.configuration['neo4j']['OS']
+        default_checksec_failed_dir = Path.cwd() / f"{self.os_node.id}_static_analyzer_failed"
+        self.keep_binaries_dir = self.configuration.get('keep_failed_dir', default_checksec_failed_dir)
         # subscribe on "filesystem_new_file" events
         self.context.subscribe("filesystem_new_file", self.handle_new_file)
 
@@ -113,6 +119,11 @@ class StaticAnalyzerHook(Hook):
             pe = lief.parse(local_path)
             if not pe:
                 self.logger.warning("LIEF failed to parse %s", inode.path)
+                if self.keep_binaries:
+                    self.keep_binaries_dir.mkdir(parents=True, exist_ok=True)
+                    dst = self.keep_binaries_dir / inode.name
+                    self.logger.warning("Dumping as %s", dst)
+                    shutil.copy(inode.local_file, dst)
                 return
 
             # extraction of relevant DLL characteristics
