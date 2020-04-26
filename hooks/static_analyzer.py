@@ -11,9 +11,6 @@ from signify.fingerprinter import AuthenticodeFingerprinter
 import asn1
 
 
-global_catFileName = ''
-
-
 @dataclass
 class checkPE:
     dynamicBase: bool
@@ -37,6 +34,7 @@ class StaticAnalyzerHook(Hook):
 
     def __init__(self, parameters):
         super().__init__(parameters)
+        self.catFileName = ''
         self.catalogs = self.configuration.get('catalogs', False)
         # subscribe on "filesystem_new_file" events
         self.context.subscribe("filesystem_new_file", self.handle_new_file)
@@ -50,7 +48,7 @@ class StaticAnalyzerHook(Hook):
         else:
             while size > 1024 and suffixIndex < 3:
                 suffixIndex += 1
-                size = size/1024.0
+                size = size / 1024.0
 
         return "%.*f%s" % (precision, size, suffix[suffixIndex])
 
@@ -71,8 +69,7 @@ class StaticAnalyzerHook(Hook):
             elif tag.typ == asn1.Types.Constructed:
                 input_stream.enter()
                 catalogFound = self.search_cat(
-                    input_stream, sha1Hash, sha256Hash, spcIndirectFound
-                )
+                    input_stream, sha1Hash, sha256Hash, spcIndirectFound)
                 if catalogFound:
                     input_stream.leave()
                     return True
@@ -91,19 +88,15 @@ class StaticAnalyzerHook(Hook):
                         return True
                 else:
                     cat_inode = Inode(gfs, Path(path_entry))
-                    cat_file_obj = open(cat_inode.local_file, "rb")
-                    cat_data = cat_file_obj.read()
-                    decoder = asn1.Decoder()
-                    decoder.start(cat_data)
-                    catalogFound = self.search_cat(
-                        decoder, sha1Hash, sha256Hash, 0
-                    )
-                    if catalogFound:
-                        global global_catFileName
-                        global_catFileName = entry
-                        cat_file_obj.close()
-                        return True
-                    cat_file_obj.close()
+                    with open(cat_inode.local_file, "rb") as cat_file_obj:
+                        cat_data = cat_file_obj.read()
+                        decoder = asn1.Decoder()
+                        decoder.start(cat_data)
+                        catalogFound = self.search_cat(
+                            decoder, sha1Hash, sha256Hash, 0)
+                        if catalogFound:
+                            self.catFileName = entry
+                            return True
             return False
         return False
 
@@ -121,48 +114,37 @@ class StaticAnalyzerHook(Hook):
 
             # extraction of relevant DLL characteristics
             dynamicBase = pe.optional_header.has(
-                lief.PE.DLL_CHARACTERISTICS.DYNAMIC_BASE
-                )
+                lief.PE.DLL_CHARACTERISTICS.DYNAMIC_BASE)
             noSEH = pe.optional_header.has(
-                lief.PE.DLL_CHARACTERISTICS.NO_SEH
-                )
+                lief.PE.DLL_CHARACTERISTICS.NO_SEH)
             guardCF = pe.optional_header.has(
-                lief.PE.DLL_CHARACTERISTICS.GUARD_CF
-                )
+                lief.PE.DLL_CHARACTERISTICS.GUARD_CF)
             forceIntegrity = pe.optional_header.has(
-                lief.PE.DLL_CHARACTERISTICS.FORCE_INTEGRITY
-                )
+                lief.PE.DLL_CHARACTERISTICS.FORCE_INTEGRITY)
             nxCompat = pe.optional_header.has(
-                lief.PE.DLL_CHARACTERISTICS.NX_COMPAT
-                )
+                lief.PE.DLL_CHARACTERISTICS.NX_COMPAT)
             highEntropyVA = pe.optional_header.has(
-                lief.PE.DLL_CHARACTERISTICS.HIGH_ENTROPY_VA
-                )
+                lief.PE.DLL_CHARACTERISTICS.HIGH_ENTROPY_VA)
 
             # Authenticode checks (embedded and detached signatures)
             hasEmbeddedSig = pe.has_signature
 
             if self.catalogs:
                 hasCatSig = False
-                global global_catFileName
                 if not hasEmbeddedSig:
-                    pe_file_obj = open(local_path, "rb")
-                    fingerprinter = AuthenticodeFingerprinter(pe_file_obj)
-                    fingerprinter.add_authenticode_hashers(
-                        hashlib.sha1, hashlib.sha256
-                    )
-                    hashes = (fingerprinter.hashes()).get('authentihash')
-                    sha1Hash = hashes.get('sha1').hex().upper()
-                    sha256Hash = hashes.get('sha256').hex().upper()
-                    hasCatSig = self.has_catSignature(
-                        gfs, '/Windows/System32/CatRoot', inode,
-                        sha1Hash, sha256Hash
-                    )
-                    pe_file_obj.close()
+                    with open(local_path, "rb") as pe_file_obj:
+                        fingerprinter = AuthenticodeFingerprinter(pe_file_obj)
+                        fingerprinter.add_authenticode_hashers(
+                            hashlib.sha1, hashlib.sha256)
+                        hashes = (fingerprinter.hashes()).get('authentihash')
+                        sha1Hash = hashes.get('sha1').hex().upper()
+                        sha256Hash = hashes.get('sha256').hex().upper()
+                        hasCatSig = self.has_catSignature(
+                            gfs, '/Windows/System32/CatRoot', inode,
+                            sha1Hash, sha256Hash)
             else:
                 hasCatSig = None
-                global global_catFileName
-                global_catFileName = None
+                self.catFileName = None
 
             # image implementation characteristics
             codeSize = self.formatSize(pe.optional_header.sizeof_code)
@@ -175,5 +157,5 @@ class StaticAnalyzerHook(Hook):
                                nxCompat, highEntropyVA, codeSize,
                                numFunctionsExported, imageSize,
                                hasEmbeddedSig, hasCatSig,
-                               global_catFileName, importedLibs)
-            print(check_pe)
+                               self.catFileName, importedLibs)
+            self.logger.info(check_pe)
