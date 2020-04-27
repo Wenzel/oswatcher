@@ -1,4 +1,4 @@
-name: Capture Syscalls
+name: Syscall Hook
 
 on: [pull_request]
 
@@ -57,7 +57,7 @@ jobs:
             "configuration":
             {
                 "neo4j_db": {
-                    "enabled": false,
+                    "enabled": true,
                     "delete": false,
                     "replace": false
                 },
@@ -76,3 +76,11 @@ jobs:
         EOF
     - name: Capture winxp processes
       run: oswatcher -c qemu:///session winxp hooks.json -d
+
+    services:
+      neo4j:
+        image: neo4j:3.4
+        ports:
+          - 7687:7687
+        env:
+          NEO4J_AUTH: "neo4j/admin"
