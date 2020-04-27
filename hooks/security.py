@@ -9,6 +9,9 @@ from dataclasses import dataclass
 # 3rd
 from see import Hook
 
+# local
+from oswatcher.model import OSType
+
 
 @dataclass
 class ChecksecFile:
@@ -42,7 +45,7 @@ class SecurityHook(Hook):
 
     def __init__(self, parameters):
         super().__init__(parameters)
-
+        self.os_info = None
         # find checksec in path first
         self.checksec = shutil.which('checksec')
         if not self.checksec:
@@ -63,13 +66,20 @@ class SecurityHook(Hook):
         self.keep_binaries_dir = self.configuration.get('keep_failed_dir', default_checksec_failed_dir)
         self.failed_count = 0
 
+        self.context.subscribe('detected_os_info', self.get_os_info)
         self.context.subscribe('filesystem_new_file', self.check_file)
+
+    def get_os_info(self, event):
+        self.os_info = event.os_info
 
     def check_file(self, event):
         # event args
         inode = event.inode
 
-        mime = inode.file_magic_type
+        if self.os_info['os_type'] == OSType.Linux:
+            mime = inode.file_magic_type
+        else:
+            mime = inode.py_magic_type
         filepath = inode.path
         if re.match(r'application/x(-pie)?-(executable|sharedlib)', mime):
             self.logger.debug('%s: %s', filepath, mime)
