@@ -92,7 +92,7 @@ class SecurityHook(Hook):
                 output = subprocess.check_output(cmdline).decode()
             except subprocess.CalledProcessError:
                 self.failed_count += 1
-                self.logger.warning("Checksec failed to analyze %s (%s)", filepath, inode.filecmd_output())
+                self.logger.warning("Checksec failed to analyze %s (%s)", filepath, inode.gfs_file)
                 if self.keep_binaries:
                     # copy file in checksec failed dir
                     self.keep_binaries_dir.mkdir(parents=True, exist_ok=True)
