@@ -78,10 +78,10 @@ class SecurityHook(Hook):
         # event args
         inode = event.inode
 
-        if self.os_info['os_type'] == OSType.Linux:
-            mime = inode.file_magic_type
-        else:
-            mime = inode.py_magic_type
+        if not self.os_info['os_type'] == OSType.Linux:
+            # checksec only supports ELF files
+            return
+        mime = inode.file_magic_type
         filepath = inode.path
         if re.match(r'application/x(-pie)?-(executable|sharedlib)', mime):
             self.logger.info('Checking security of %s: %s', filepath, mime)
