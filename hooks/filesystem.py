@@ -178,9 +178,9 @@ class LibguestfsHook(Hook):
         if not detected:
             # quick guess of ostype based on /proc presence
             if self.gfs.is_dir('/proc'):
-                self.os_type = OSType('Linux')
+                self.os_type = OSType.Linux
             else:
-                self.os_type = OSType('Windows')
+                self.os_type = OSType.Windows
         # build os_info
         os_info = {
             'os_type': self.os_type
