@@ -1,0 +1,104 @@
+name: Security Hook
+
+on: [pull_request]
+
+jobs:
+  capture:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: true
+    - name: Update cache
+      run: sudo apt-get update
+    - name: Install system dependencies
+      run: |
+        sudo apt-get install -qq libguestfs0 libguestfs-dev \
+          libguestfs-tools pkg-config libvirt-dev libvirt-daemon-system
+    - name: Allow user to read the kernel for supermin (libguestfs)
+      run: sudo chmod 644 /boot/vmlinuz-*
+    - name: Start libvirt
+      run: sudo systemctl restart libvirtd
+    - name: Define oswatcher pool in qemu:///session
+      run: |
+        virsh -c qemu:///session pool-define-as oswatcher --type dir --target $HOME/images
+        virsh -c qemu:///session pool-build oswatcher
+        virsh -c qemu:///session pool-start oswatcher
+    - name: Set up Python 3.7
+      uses: actions/setup-python@v1
+      with:
+        python-version: '3.7'
+    - name: Install OSWatcher pip dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install .
+        pip install lxml
+        pip install http://download.libguestfs.org/python/guestfs-1.40.2.tar.gz
+    - name: Download import_libvirt script
+      run: |
+        wget 'https://raw.githubusercontent.com/Wenzel/packer-templates/474ea0fa9c540303c8655b521424a8860872b13d/import_libvirt.py'
+        chmod +x import_libvirt.py
+    - name: Download template_domain XML
+      run: wget 'https://raw.githubusercontent.com/Wenzel/packer-templates/474ea0fa9c540303c8655b521424a8860872b13d/template_domain.xml'
+    - name: Download win98 image
+      run: wget 'https://www.dropbox.com/s/ngu5ka9p0qsu8dq/win98.qcow2?dl=1' -O $HOME/win98.qcow2
+    - name: Import win98 in Libvirt
+      run: python import_libvirt.py --uri qemu:///session --domain-type qemu --open-vnc --pool oswatcher --pool-path $HOME/images $HOME/win98.qcow2
+    - name: Refresh oswatcher pool
+      run: virsh -c qemu:///session pool-refresh oswatcher
+    - name: Configure hooks.json
+      run: |
+        cat << EOF > hooks.json
+        {
+            "configuration":
+            {
+                "neo4j": {
+                    "enabled": true,
+                    "delete": false,
+                    "replace": false
+                },
+                "desktop_ready_delay": 0
+            },
+            "hooks":
+            [
+                {
+                    "name": "hooks.filesystem.LibguestfsHook"
+                },
+                {
+                    "name": "hooks.filesystem.FilesystemHook",
+                    "configuration":
+                    {
+                        "enumerate": true,
+                        "log_progress": true,
+                        "log_progress_delay": 10
+                    }
+                },
+                {
+                    "name": "hooks.filesystem.Neo4jFilesystemHook"
+                },
+                {
+                    "name": "hooks.security.SecurityHook",
+                    "configuration": {
+                        "keep_failed_binaries": true,
+                        "keep_failed_dir": "$HOME/checksec_failed"
+                    }
+                }
+            ]
+        }
+        EOF
+    - name: display hooks.json
+      run: cat hooks.json
+    - name: Update path to include checksec
+      run:  echo "::add-path::$GITHUB_WORKSPACE/tools/checksec"
+    - name: Capture win98 filesystem
+      run: oswatcher -c qemu:///session win98 hooks.json -d
+
+    services:
+      neo4j:
+        image: neo4j:3.4
+        ports:
+          - 7687:7687
+        env:
+          NEO4J_AUTH: "neo4j/admin"
