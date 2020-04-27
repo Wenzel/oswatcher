@@ -1,9 +1,9 @@
-name: Capture Filesystem
+name: Filesystem Hook
 
 on: [pull_request]
 
 jobs:
-  build:
+  capture:
 
     runs-on: ubuntu-latest
 
@@ -52,10 +52,10 @@ jobs:
         {
             "configuration":
             {
-                "neo4j_db": {
-                    "enabled": false,
-                    "delete": false,
-                    "replace": false
+                "neo4j": {
+                    "enabled": true,
+                    "delete": true,
+                    "replace": true
                 },
                 "desktop_ready_delay": 0
             },
@@ -64,35 +64,30 @@ jobs:
                 {
                     "name": "hooks.filesystem.LibguestfsHook"
                 },
-                {
-                    "name": "hooks.filesystem.FilesystemHook",
-                    "configuration":
                     {
-                        "enumerate": true,
-                        "log_progress": true,
-                        "log_progress_delay": 10
-                    }
-                },
+                        "name": "hooks.filesystem.FilesystemHook",
+                        "configuration":
+                        {
+                            "enumerate": true,
+                            "log_progress": true,
+                            "log_progress_delay": 10
+                        }
+                    },
                 {
-                    "name": "hooks.filesystem.GitFilesystemHook",
-                    "configuration":
-                    {
-                        "repo": "$HOME/osw_fs",
-                        "file_content": true
-                    }
+                    "name": "hooks.filesystem.Neo4jFilesystemHook"
                 }
             ]
         }
         EOF
-    - name: Initialize osw_fs git repo
-      run: |
-        git config --global user.email "github@github.com"
-        git config --global user.name "Github Actions"
-        git init $HOME/osw_fs
-        pushd $HOME/osw_fs
-        git lfs install
-        git lfs track '*'
-        git add .gitattributes
-        git commit -m 'track everything'
+    - name: display hooks.json
+      run: cat hooks.json
     - name: Capture win98 filesystem
       run: oswatcher -c qemu:///session win98 hooks.json -d
+
+    services:
+      neo4j:
+        image: neo4j:3.4
+        ports:
+          - 7687:7687
+        env:
+          NEO4J_AUTH: "neo4j/admin"

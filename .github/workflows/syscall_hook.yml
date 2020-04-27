@@ -1,9 +1,9 @@
-name: Capture Processes
+name: Syscall Hook
 
 on: [pull_request]
 
 jobs:
-  build:
+  capture:
 
     runs-on: ubuntu-latest
 
@@ -57,7 +57,7 @@ jobs:
             "configuration":
             {
                 "neo4j_db": {
-                    "enabled": false,
+                    "enabled": true,
                     "delete": false,
                     "replace": false
                 },
@@ -69,10 +69,18 @@ jobs:
                     "name": "hooks.memory.MemoryDumpHook"
                 },
                 {
-                    "name": "hooks.process.ProcessListHook"
+                    "name": "hooks.syscall.SyscallTableHook"
                 }
             ]
         }
         EOF
     - name: Capture winxp processes
       run: oswatcher -c qemu:///session winxp hooks.json -d
+
+    services:
+      neo4j:
+        image: neo4j:3.4
+        ports:
+          - 7687:7687
+        env:
+          NEO4J_AUTH: "neo4j/admin"

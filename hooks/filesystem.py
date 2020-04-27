@@ -101,9 +101,9 @@ class Inode:
     @functools.lru_cache()
     def filecmd_output(self, mime_option=False):
         """Run the file utility and returns the output"""
-        STATS['filecmd_output'] += 1
         if not self.inode_type == InodeType.REG:
             return None
+        STATS['filecmd_output'] += 1
         file_cmd = ['file', self.str_path]
         if mime_option:
             file_cmd.append('-i')
@@ -138,9 +138,9 @@ class Inode:
     @property
     @functools.lru_cache()
     def py_magic_type(self):
-        STATS['py_magic_type'] += 1
         if not self.inode_type == InodeType.REG:
             return None
+        STATS['py_magic_type'] += 1
         return magic.from_file(self.local_file, mime=True)
 
 
