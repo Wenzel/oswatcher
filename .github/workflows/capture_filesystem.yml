@@ -46,16 +46,44 @@ jobs:
       run: python import_libvirt.py --uri qemu:///session --domain-type qemu --open-vnc --pool oswatcher --pool-path $HOME/images $HOME/win98.qcow2
     - name: Refresh oswatcher pool
       run: virsh -c qemu:///session pool-refresh oswatcher
-    - name: Install jq to modify hooks.json
-      run: sudo apt-get install -qq jq
-    - name: Edit hooks.json
+    - name: Configure hooks.json
       run: |
-        jq -r '.configuration.desktop_ready_delay |= 0' hooks.json > temp.json
-        mv temp.json hooks.json
-        jq -r ".hooks[1].configuration.repo = \"$HOME/osw_fs\"" hooks.json > temp.json
-        mv temp.json hooks.json
-        jq -r ".hooks[1].configuration.file_content = true" hooks.json > temp.json
-        mv temp.json hooks.json
+        cat << EOF > hooks.json
+        {
+            "configuration":
+            {
+                "neo4j_db": {
+                    "enabled": false,
+                    "delete": false,
+                    "replace": false
+                },
+                "desktop_ready_delay": 0
+            },
+            "hooks":
+            [
+                {
+                    "name": "hooks.filesystem.LibguestfsHook"
+                },
+                {
+                    "name": "hooks.filesystem.FilesystemHook",
+                    "configuration":
+                    {
+                        "enumerate": true,
+                        "log_progress": true,
+                        "log_progress_delay": 10
+                    }
+                },
+                {
+                    "name": "hooks.filesystem.GitFilesystemHook",
+                    "configuration":
+                    {
+                        "repo": "$HOME/osw_fs",
+                        "file_content": true
+                    }
+                }
+            ]
+        }
+        EOF
     - name: Initialize osw_fs git repo
       run: |
         git config --global user.email "github@github.com"
