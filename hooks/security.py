@@ -82,7 +82,7 @@ class SecurityHook(Hook):
             mime = inode.py_magic_type
         filepath = inode.path
         if re.match(r'application/x(-pie)?-(executable|sharedlib)', mime):
-            self.logger.debug('%s: %s', filepath, mime)
+            self.logger.info('Checking security of %s: %s', filepath, mime)
             # this is a heavy call (download the file on the host filesystem through libguestfs appliance)
             # call it here once we filtered on the mime type provided by the file utility
             local_filepath = inode.local_file
@@ -134,7 +134,11 @@ class SecurityHook(Hook):
 
             checksec_file = ChecksecFile(relro, canary, nx, pie, rpath, runpath,
                                          symbols, fortify_source, fortified, fortifyable)
+            self.logger.debug("Properties: %s", checksec_file)
             self.context.trigger('security_checksec_bin', inode=inode, checksec_file=checksec_file)
+        else:
+            # log mime for debugging
+            self.logger.debug("Discard security analysis of %s: wrong mime type: %s", filepath, mime)
 
     def cleanup(self):
         if self.failed_count:
