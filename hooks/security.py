@@ -5,6 +5,7 @@ import re
 import shutil
 from pathlib import Path
 from dataclasses import dataclass
+from collections import Counter
 
 # 3rd
 from see import Hook
@@ -46,6 +47,8 @@ class SecurityHook(Hook):
     def __init__(self, parameters):
         super().__init__(parameters)
         self.os_info = None
+        self.stats = Counter()
+        self.stats['total'] = 0
         # find checksec in path first
         self.checksec = shutil.which('checksec')
         if not self.checksec:
@@ -64,7 +67,6 @@ class SecurityHook(Hook):
             os_id = self.context.domain.name()
         default_checksec_failed_dir = Path.cwd() / f"{os_id}_checksec_failed"
         self.keep_binaries_dir = self.configuration.get('keep_failed_dir', default_checksec_failed_dir)
-        self.failed_count = 0
 
         self.context.subscribe('detected_os_info', self.get_os_info)
         self.context.subscribe('filesystem_new_file', self.check_file)
@@ -83,6 +85,7 @@ class SecurityHook(Hook):
         filepath = inode.path
         if re.match(r'application/x(-pie)?-(executable|sharedlib)', mime):
             self.logger.info('Checking security of %s: %s', filepath, mime)
+            self.stats['total'] += 1
             # this is a heavy call (download the file on the host filesystem through libguestfs appliance)
             # call it here once we filtered on the mime type provided by the file utility
             local_filepath = inode.local_file
@@ -91,7 +94,7 @@ class SecurityHook(Hook):
             try:
                 output = subprocess.check_output(cmdline).decode()
             except subprocess.CalledProcessError:
-                self.failed_count += 1
+                self.stats['failed'] += 1
                 self.logger.warning("Checksec failed to analyze %s (%s)", filepath, inode.gfs_file)
                 if self.keep_binaries:
                     # copy file in checksec failed dir
@@ -120,7 +123,7 @@ class SecurityHook(Hook):
                     fortified = profile['fortified']
                     fortifyable = profile['fortify-able']
                 except KeyError as e:
-                    self.failed_count += 1
+                    self.stats['failed'] += 1
                     self.logger.warning("Error while parsing checksec JSON output on %s (%s). Key %s does not exist",
                                         filepath, inode.filecmd_output(), e.args[0])
                     self.logger.warning("Full checksec output: %s", output)
@@ -141,5 +144,5 @@ class SecurityHook(Hook):
             self.logger.debug("Discard security analysis of %s: wrong mime type: %s", filepath, mime)
 
     def cleanup(self):
-        if self.failed_count:
-            self.logger.info('Checksec failures count: %s', self.failed_count)
+        if self.stats['total']:
+            self.logger.info('Checksec stats: %s/%s', self.stats['total'], self.stats['failed'])
