@@ -111,6 +111,14 @@ class Inode:
 
     @property
     @functools.lru_cache()
+    def gfs_file(self):
+        if not self.inode_type == InodeType.REG:
+            return None
+        STATS['guestfs_file'] += 1
+        return self._gfs.file(self.str_path)
+
+    @property
+    @functools.lru_cache()
     def file_magic_type(self):
         """this method is faster than py_magic_type, since it doesn't involve
         downloading the whole file to the host"""
