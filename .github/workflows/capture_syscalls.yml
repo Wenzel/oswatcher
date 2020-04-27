@@ -3,7 +3,7 @@ name: Capture Syscalls
 on: [pull_request]
 
 jobs:
-  build:
+  capture:
 
     runs-on: ubuntu-latest
 
