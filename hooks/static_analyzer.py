@@ -102,7 +102,7 @@ class StaticAnalyzerHook(Hook):
                     if hasCatSig:
                         return True
                 else:
-                    cat_inode = Inode(gfs, Path(path_entry))
+                    cat_inode = Inode(self.logger, gfs, Path(path_entry))
                     with open(cat_inode.local_file, "rb") as cat_file_obj:
                         cat_data = cat_file_obj.read()
                         decoder = asn1.Decoder()
