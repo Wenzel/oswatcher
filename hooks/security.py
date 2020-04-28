@@ -9,6 +9,8 @@ from pathlib import Path
 
 # 3rd
 from see import Hook
+from checksec.elf import ELFSecurity, PIEType, RelroType
+from checksec.errors import ErrorNotAnElf, ErrorParsingFailed
 
 # local
 from oswatcher.model import OSType
@@ -16,16 +18,16 @@ from oswatcher.model import OSType
 
 @dataclass
 class ChecksecFile:
-    relro: str
+    relro: RelroType
     canary: bool
     nx: bool
-    pie: str
+    pie: PIEType
     rpath: bool
     runpath: bool
     symbols: bool
-    fortify_source: bool
     fortified: bool
-    fortifyable: bool
+    fortify_source: int
+    fortifyable: int
 
 
 class SecurityHook(Hook):
@@ -42,20 +44,11 @@ class SecurityHook(Hook):
     }
     """
 
-    CHECKSEC_BIN = Path(__file__).parent.parent / "tools" / "checksec" / "checksec"
-
     def __init__(self, parameters):
         super().__init__(parameters)
         self.os_info = None
         self.stats = Counter()
         self.stats['total'] = 0
-        # find checksec in path first
-        self.checksec = shutil.which('checksec')
-        if not self.checksec:
-            # use checksec version distributed with oswatcher
-            if not self.CHECKSEC_BIN.exists():
-                raise RuntimeError('Cannot find checksec, did you forget to init the submodule ?')
-            self.checksec = str(self.CHECKSEC_BIN)
         self.neo4j_enabled = self.configuration.get('neo4j', False)
         if self.neo4j_enabled:
             self.os_node = self.configuration['neo4j']['OS']
@@ -89,13 +82,15 @@ class SecurityHook(Hook):
             # this is a heavy call (download the file on the host filesystem through libguestfs appliance)
             # call it here once we filtered on the mime type provided by the file utility
             local_filepath = inode.local_file
-            # run checksec and load json
-            cmdline = [self.checksec, '--output=json', f'--file={local_filepath}']
             try:
-                output = subprocess.check_output(cmdline).decode()
-            except subprocess.CalledProcessError:
+                elf = ELFSecurity(local_filepath)
+            except ErrorNotAnElf:
                 self.stats['failed'] += 1
-                self.logger.warning("Checksec failed to analyze %s (%s)", filepath, inode.gfs_file)
+                self.logger.warning("Not a valid ELF file: %s (%s)", filepath, inode.gfs_file)
+                return
+            except ErrorParsingFailed:
+                self.stats['failed'] += 1
+                self.logger.warning("ELF parsing failed: %s (%s)", filepath, inode.gfs_file)
                 if self.keep_binaries:
                     # copy file in checksec failed dir
                     self.keep_binaries_dir.mkdir(parents=True, exist_ok=True)
@@ -104,41 +99,21 @@ class SecurityHook(Hook):
                     shutil.copy(inode.local_file, dst)
                 return
             else:
-                # load checksec JSON data and extract keys
-                checksec_data = json.loads(subprocess.check_output(cmdline).decode())
+                relro = elf.has_relro
+                canary = elf.has_canary
+                nx = elf.has_nx
+                pie = elf.is_pie
+                rpath = elf.has_rpath
+                runpath = elf.has_runpath
+                symbols = not elf.is_stripped
+                fortified = elf.is_fortified
+                fortify_source = 0   # TODO
+                fortifyable = 0  # TODO
 
-                def str2bool(string):
-                    return string.lower() in ['yes', 'true', 'y', '1']
-                try:
-                    profile = checksec_data[local_filepath]
-
-                    relro = profile['relro']
-                    canary = str2bool(profile['canary'])
-                    nx = str2bool(profile['nx'])
-                    pie = profile['pie']
-                    rpath = str2bool(profile['rpath'])
-                    runpath = str2bool(profile['runpath'])
-                    symbols = str2bool(profile['symbols'])
-                    fortify_source = str2bool(profile['fortify_source'])
-                    fortified = profile['fortified']
-                    fortifyable = profile['fortify-able']
-                except KeyError as e:
-                    self.stats['failed'] += 1
-                    self.logger.warning("Error while parsing checksec JSON output on %s (%s). Key %s does not exist",
-                                        filepath, inode.filecmd_output(), e.args[0])
-                    self.logger.warning("Full checksec output: %s", output)
-                    if self.keep_binaries:
-                        # copy file in checksec failed dir
-                        self.keep_binaries_dir.mkdir(parents=True, exist_ok=True)
-                        dst = self.keep_binaries_dir / inode.name
-                        self.logger.warning("Dumping as %s", dst)
-                        shutil.copy(inode.local_file, dst)
-                    return
-
-            checksec_file = ChecksecFile(relro, canary, nx, pie, rpath, runpath,
-                                         symbols, fortify_source, fortified, fortifyable)
-            self.logger.debug("Properties: %s", checksec_file)
-            self.context.trigger('security_checksec_bin', inode=inode, checksec_file=checksec_file)
+                checksec_file = ChecksecFile(relro, canary, nx, pie, rpath, runpath,
+                                             symbols, fortify_source, fortified, fortifyable)
+                self.logger.debug("Properties: %s", checksec_file)
+                self.context.trigger('security_checksec_bin', inode=inode, checksec_file=checksec_file)
         else:
             # log mime for debugging
             self.logger.debug("Discard security analysis of %s: wrong mime type: %s", filepath, mime)
