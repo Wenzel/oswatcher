@@ -456,10 +456,10 @@ class Neo4jFilesystemHook(Hook):
         inode = event.inode
         checksec_file = event.checksec_file
         self.fs[str(inode.path)].checksec = True
-        self.fs[str(inode.path)].relro = checksec_file.relro
+        self.fs[str(inode.path)].relro = checksec_file.relro.name
         self.fs[str(inode.path)].canary = checksec_file.canary
         self.fs[str(inode.path)].nx = checksec_file.nx
-        self.fs[str(inode.path)].pie = checksec_file.pie
+        self.fs[str(inode.path)].pie = checksec_file.pie.name
         self.fs[str(inode.path)].rpath = checksec_file.rpath
         self.fs[str(inode.path)].runpath = checksec_file.runpath
         self.fs[str(inode.path)].symbols = checksec_file.symbols
