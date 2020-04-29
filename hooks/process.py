@@ -1,9 +1,9 @@
 # local
-from hooks.memory import JsonRenderer, BASE_CONFIG_PATH
-from oswatcher.model import Process
-
 # 3rd
 from see import Hook
+
+from hooks.memory import BASE_CONFIG_PATH, JsonRenderer
+from oswatcher.model import Process
 from volatility.framework import automagic, plugins
 
 

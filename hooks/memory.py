@@ -1,23 +1,24 @@
 # sys
+import datetime
 import logging
 import os
-import stat
-import datetime
 import shutil
+import stat
 from pathlib import Path
-from typing import Any, List, Tuple, Dict, Optional
 from tempfile import NamedTemporaryFile, TemporaryDirectory
+from typing import Any, Dict, List, Optional, Tuple
 
 # 3rd
 import libvirt
 from see import Hook
+
 import volatility.plugins
 from volatility import framework
-from volatility.framework import contexts, automagic, interfaces
+from volatility.cli.text_renderer import (display_disassembly,
+                                          hex_bytes_as_text, quoted_optional)
+from volatility.framework import automagic, contexts, interfaces
 from volatility.framework.interfaces.renderers import RenderOption
 from volatility.framework.renderers import format_hints
-from volatility.cli.text_renderer import quoted_optional, hex_bytes_as_text, display_disassembly
-
 
 BASE_CONFIG_PATH = 'plugins'
 

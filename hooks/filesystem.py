@@ -1,24 +1,23 @@
 # sys
-import time
-import stat
-import shutil
-import re
 import functools
+import re
+import shutil
+import stat
+import time
 from collections import Counter
-from tempfile import NamedTemporaryFile
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 
-# local
-from oswatcher.model import GraphInode, InodeType, OSType
-from oswatcher.utils import get_hard_drive_path
+import magic
+from git import Repo
+from git.exc import GitCommandError
+from see import Hook
 
 # 3rd
 import guestfs
-import magic
-from see import Hook
-from git import Repo
-from git.exc import GitCommandError
-
+# local
+from oswatcher.model import GraphInode, InodeType, OSType
+from oswatcher.utils import get_hard_drive_path
 
 STATS = Counter()
 

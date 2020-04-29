@@ -1,17 +1,13 @@
 # sys
+import json
+import logging
 import os
 import sys
-import logging
 import time
-import json
-from pathlib import Path
-from timeit import default_timer as timer
 from datetime import timedelta
+from pathlib import Path
 from tempfile import NamedTemporaryFile, TemporaryDirectory, gettempdir
-
-# local
-from oswatcher.model import OS
-from oswatcher.utils import get_hard_drive_path
+from timeit import default_timer as timer
 
 # 3rd
 import libvirt
@@ -19,6 +15,9 @@ from py2neo import Graph
 from see import Environment
 from see.context import QEMUContextFactory
 
+# local
+from oswatcher.model import OS
+from oswatcher.utils import get_hard_drive_path
 
 __SCRIPT_DIR = os.path.dirname(os.path.realpath(sys.argv[0]))
 DB_PASSWORD = "admin"
