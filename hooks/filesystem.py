@@ -8,13 +8,13 @@ from collections import Counter
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 
+# 3rd
+import guestfs
 import magic
 from git import Repo
 from git.exc import GitCommandError
 from see import Hook
 
-# 3rd
-import guestfs
 # local
 from oswatcher.model import GraphInode, InodeType, OSType
 from oswatcher.utils import get_hard_drive_path
@@ -320,7 +320,7 @@ class FilesystemHook(Hook):
         self.logger.info('Capturing filesystem')
         self.time_last_update = time.time()
 
-        self.context.trigger('filesystem_capture_begin')
+        self.context.trigger('filesystem_capture_begin', gfs=self.gfs)
         root_inode = self.walk_capture(root)
         # cleanup inode related resources
         root_inode.close()

@@ -1,18 +1,15 @@
-# sys
-import json
 import re
 import shutil
-import subprocess
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 
-# 3rd
-from see import Hook
 from checksec.elf import ELFSecurity, PIEType, RelroType
 from checksec.errors import ErrorNotAnElf, ErrorParsingFailed
+from see import Hook
 
-# local
+from hooks.filesystem import Inode
 from oswatcher.model import OSType
 
 
@@ -49,6 +46,7 @@ class SecurityHook(Hook):
         self.os_info = None
         self.stats = Counter()
         self.stats['total'] = 0
+        self.local_guest_libc = NamedTemporaryFile()
         self.neo4j_enabled = self.configuration.get('neo4j', False)
         if self.neo4j_enabled:
             self.os_node = self.configuration['neo4j']['OS']
@@ -62,10 +60,59 @@ class SecurityHook(Hook):
         self.keep_binaries_dir = self.configuration.get('keep_failed_dir', default_checksec_failed_dir)
 
         self.context.subscribe('detected_os_info', self.get_os_info)
+        self.context.subscribe('filesystem_capture_begin', self.download_libc)
         self.context.subscribe('filesystem_new_file', self.check_file)
 
     def get_os_info(self, event):
         self.os_info = event.os_info
+
+    def download_libc(self, event):
+        """Locate and download the libc"""
+        gfs = event.gfs
+
+        if not self.os_info:
+            raise RuntimeError('Expected OS Info')
+
+        if not self.os_info['os_type'] == OSType.Linux:
+            return
+
+        # find ldd
+        cmd = ['which', 'ldd']
+        try:
+            ldd_path = gfs.command(cmd).strip()
+        except RuntimeError:
+            self.logger.warning("Libc detection: command %s failed", cmd)
+            return
+        # find ls
+        cmd = ['which', 'ls']
+        try:
+            ls_path = gfs.command(cmd).strip()
+        except RuntimeError:
+            self.logger.warning("Libc detection: command %s failed", cmd)
+            return
+        cmd = [ldd_path, ls_path]
+        try:
+            ldd_output = gfs.command(cmd).strip()
+        except RuntimeError:
+            self.logger.warning("Libc detection: command %s failed", cmd)
+            return
+
+        libc_inode = None
+        for ldd_line in ldd_output.splitlines():
+            m = re.match(r'\t*(?P<libname>.*)\s+(=>)?\s+(?P<libpath>\S+)?\s+\((?P<addr>.*)\)$', ldd_line)
+            if not m:
+                self.logger.warn("Libc detection: line \"%s\" doesn't match LDD regex", ldd_line)
+                continue
+            if m.group('libname').startswith('libc.so'):
+                # found guest libc
+                libc_inode = Inode(self.logger, gfs, Path(m.group('libpath')))
+                break
+        if libc_inode is None:
+            self.logger.warning("Libc detection: Couldn't locate libc !")
+            return
+        # copy libc
+        shutil.copy(libc_inode.local_file, self.local_guest_libc.name)
+        self.logger.info("Copied guest libc %s to %s", libc_inode.path, self.local_guest_libc.name)
 
     def check_file(self, event):
         # event args
