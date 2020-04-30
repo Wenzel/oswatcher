@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 
-from checksec.elf import ELFSecurity, PIEType, RelroType
+from checksec.elf import ELFSecurity, PIEType, RelroType, set_libc
 from checksec.errors import ErrorNotAnElf, ErrorParsingFailed
 from see import Hook
 
@@ -113,6 +113,8 @@ class SecurityHook(Hook):
         # copy libc
         shutil.copy(libc_inode.local_file, self.local_guest_libc.name)
         self.logger.info("Copied guest libc %s to %s", libc_inode.path, self.local_guest_libc.name)
+        # setup checksec libc
+        set_libc(Path(self.local_guest_libc.name))
 
     def check_file(self, event):
         # event args
@@ -146,16 +148,16 @@ class SecurityHook(Hook):
                     shutil.copy(inode.local_file, dst)
                 return
             else:
-                relro = elf.has_relro
+                relro = elf.relro
                 canary = elf.has_canary
                 nx = elf.has_nx
-                pie = elf.is_pie
+                pie = elf.pie
                 rpath = elf.has_rpath
                 runpath = elf.has_runpath
                 symbols = not elf.is_stripped
                 fortified = elf.is_fortified
-                fortify_source = 0   # TODO
-                fortifyable = 0  # TODO
+                fortify_source = len(elf.fortified)
+                fortifyable = len(elf.fortifiable)
 
                 checksec_file = ChecksecFile(relro, canary, nx, pie, rpath, runpath,
                                              symbols, fortify_source, fortified, fortifyable)
