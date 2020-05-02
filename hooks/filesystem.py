@@ -8,13 +8,13 @@ from collections import Counter
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 
+# 3rd
+import guestfs
 import magic
 from git import Repo
 from git.exc import GitCommandError
 from see import Hook
 
-# 3rd
-import guestfs
 # local
 from oswatcher.model import GraphInode, InodeType, OSType
 from oswatcher.utils import get_hard_drive_path
@@ -320,7 +320,7 @@ class FilesystemHook(Hook):
         self.logger.info('Capturing filesystem')
         self.time_last_update = time.time()
 
-        self.context.trigger('filesystem_capture_begin')
+        self.context.trigger('filesystem_capture_begin', gfs=self.gfs)
         root_inode = self.walk_capture(root)
         # cleanup inode related resources
         root_inode.close()
@@ -456,10 +456,10 @@ class Neo4jFilesystemHook(Hook):
         inode = event.inode
         checksec_file = event.checksec_file
         self.fs[str(inode.path)].checksec = True
-        self.fs[str(inode.path)].relro = checksec_file.relro
+        self.fs[str(inode.path)].relro = checksec_file.relro.name
         self.fs[str(inode.path)].canary = checksec_file.canary
         self.fs[str(inode.path)].nx = checksec_file.nx
-        self.fs[str(inode.path)].pie = checksec_file.pie
+        self.fs[str(inode.path)].pie = checksec_file.pie.name
         self.fs[str(inode.path)].rpath = checksec_file.rpath
         self.fs[str(inode.path)].runpath = checksec_file.runpath
         self.fs[str(inode.path)].symbols = checksec_file.symbols
