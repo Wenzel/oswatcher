@@ -6,6 +6,7 @@ import stat
 import time
 from collections import Counter
 from pathlib import Path
+from typing import Optional
 
 import guestfs
 import magic
@@ -49,7 +50,7 @@ class Inode:
 
     @property
     @functools.lru_cache()
-    def str_path(self):
+    def str_path(self) -> str:
         return str(self.path)
 
     @property
@@ -94,14 +95,14 @@ class Inode:
 
     @property
     @functools.lru_cache()
-    def local_file(self):
+    def local_file(self) -> str:
         STATS['local_file'] += 1
         self._tmp_local_file = TEMPFILE.NamedTemporaryFile()
         self._gfs.download(self.str_path, self._tmp_local_file.name)
         return self._tmp_local_file.name
 
     @functools.lru_cache()
-    def filecmd_output(self, mime_option=False):
+    def filecmd_output(self, mime_option=False) -> Optional[str]:
         """Run the file utility and returns the output"""
         if not self.inode_type == InodeType.REG:
             return None
@@ -113,7 +114,7 @@ class Inode:
 
     @property
     @functools.lru_cache()
-    def gfs_file(self):
+    def gfs_file(self) -> Optional[str]:
         if not self.inode_type == InodeType.REG:
             return None
         STATS['guestfs_file'] += 1
@@ -121,7 +122,7 @@ class Inode:
 
     @property
     @functools.lru_cache()
-    def file_magic_type(self):
+    def file_magic_type(self) -> Optional[str]:
         """this method is faster than py_magic_type, since it doesn't involve
         downloading the whole file to the host"""
         STATS['file_magic_type'] += 1
@@ -139,7 +140,7 @@ class Inode:
 
     @property
     @functools.lru_cache()
-    def py_magic_type(self):
+    def py_magic_type(self) -> Optional[str]:
         if not self.inode_type == InodeType.REG:
             return None
         STATS['py_magic_type'] += 1
