@@ -82,6 +82,8 @@ class SecurityHook(Hook):
             # checksec only supports ELF files
             return
         mime = inode.file_magic_type
+        if not mime:
+            return
         filepath = inode.path
         if re.match(r'application/x(-pie)?-(executable|sharedlib)', mime):
             self.logger.info('Checking security of %s: %s', filepath, mime)
