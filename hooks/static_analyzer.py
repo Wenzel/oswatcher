@@ -54,7 +54,7 @@ class StaticAnalyzerHook(Hook):
         # subscribe on "filesystem_new_file" events
         self.context.subscribe("filesystem_new_file", self.handle_new_file)
 
-    def formatSize(self, size, precision=2):
+    def formatSize(self, size, precision=2) -> str:
         suffix = ['B', 'KB', 'MB', 'GB']
         suffixIndex = 0
 
@@ -67,7 +67,7 @@ class StaticAnalyzerHook(Hook):
 
         return "%.*f%s" % (precision, size, suffix[suffixIndex])
 
-    def search_cat(self, input_stream, sha1Hash, sha256Hash, spcIndirectFound):
+    def search_cat(self, input_stream, sha1Hash, sha256Hash, spcIndirectFound) -> bool:
         while not input_stream.eof():
             tag = input_stream.peek()
             if tag.typ == asn1.Types.Primitive:
@@ -91,7 +91,7 @@ class StaticAnalyzerHook(Hook):
                 input_stream.leave()
         return False
 
-    def has_catSignature(self, gfs, folder, pe_inode, sha1Hash, sha256Hash):
+    def has_catSignature(self, gfs, folder, pe_inode, sha1Hash, sha256Hash) -> bool:
         if gfs.is_dir(folder):
             for entry in gfs.ls(folder):
                 path_entry = folder + '/' + entry
@@ -115,7 +115,7 @@ class StaticAnalyzerHook(Hook):
             return False
         return False
 
-    def handle_new_file(self, event):
+    def handle_new_file(self, event) -> None:
         # get inode parameter
         inode = event.inode
         gfs = event.gfs
