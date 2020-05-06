@@ -6,12 +6,13 @@ import stat
 import time
 from collections import Counter
 from pathlib import Path
-from typing import Optional
+from typing import Any, Callable, Iterator, Optional
 
 import guestfs
 import magic
 from git import Repo
 from git.exc import GitCommandError
+from guestfs import GuestFS
 from memory_tempfile import MemoryTempfile
 from see import Hook
 
@@ -147,6 +148,48 @@ class Inode:
         return magic.from_file(self.local_file, mime=True)
 
 
+class GuestFSWrapper:
+    """
+    A wrapper around the libguestfs instance GuestFS object
+    which provides helpers to easily walk through the filesystem
+    """
+    def __init__(self, guestfs_instance: GuestFS):
+        self._gfs = guestfs_instance
+        self.logger = logging.getLogger(self.__class__.__name__)
+
+    def walk(self, node: Path, func: Callable[[Path], Any] = None) -> Iterator[Any]:
+        """
+        walks the filesystem at the given path, yield the return value of the given function
+        :param node: the guest Path from which to start walking
+        :param func: a lambda function whose return value will be yielded. If not specified, the yielded value
+                    will be the current guest filepath
+        :return: and iterator a values returned by the specified lambda function
+        """
+        if not func:
+            yield node
+        else:
+            yield func(node)
+        if self._gfs.is_dir(str(node)):
+            for entry in self.list_entries(str(node)):
+                subnode_abs = node / entry
+                yield from self.walk(subnode_abs, func)
+
+    def walk_inodes(self, node: Path) -> Iterator[Inode]:
+        yield from self.walk(node, lambda cur_node: Inode(self.logger, self._gfs, cur_node))
+
+    def list_entries(self, folder: str) -> Iterator[str]:
+        # assume that node is a directory
+        # workaround bugs in libguestfs
+        try:
+            yield from self._gfs.ls(str(folder))
+        except UnicodeDecodeError as e:
+            # reported: https://bugzilla.redhat.com/show_bug.cgi?id=1778962
+            self.logger.warning("libguestfs failed to list entries of %s directory: %s", str(folder), str(e))
+        except RuntimeError as e:
+            # TODO: report bug
+            self.logger.warning("libguestfs failed to list entries of %s directory: %s", str(folder), str(e))
+
+
 class LibguestfsHook(Hook):
 
     def __init__(self, parameters):
@@ -239,6 +282,7 @@ class FilesystemHook(Hook):
         self.filter_exclude = self.configuration.get('filter_exclude')
 
         self.gfs = None
+        self.gfs_wrapper = None
         self.tx = None
         self.counter = 0
         self.total_entries = 0
@@ -313,6 +357,7 @@ class FilesystemHook(Hook):
     def get_guestfs_instance(self, event):
         """SEE signal handler to simply retrieve the libguestfs instance"""
         self.gfs = event.gfs
+        self.gfs_wrapper = GuestFSWrapper(self.gfs)
 
     def capture_fs(self, event):
         if self.gfs is None:
