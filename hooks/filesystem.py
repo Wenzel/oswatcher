@@ -29,8 +29,8 @@ except RuntimeError:
 
 class Inode:
 
-    def __init__(self, logger, gfs, node):
-        self._logger = logger
+    def __init__(self, gfs, node):
+        self._logger = logging.getLogger(self.__class__.__name__)
         self._gfs = gfs
         self._tmp_local_file = None
         # public attributes
@@ -175,7 +175,7 @@ class GuestFSWrapper:
                 yield from self.walk(subnode_abs, func)
 
     def walk_inodes(self, node: Path) -> Iterator[Inode]:
-        yield from self.walk(node, lambda cur_node: Inode(self.logger, self._gfs, cur_node))
+        yield from self.walk(node, lambda cur_node: Inode(self._gfs, cur_node))
 
     def list_entries(self, folder: str) -> Iterator[str]:
         # assume that node is a directory
@@ -386,7 +386,7 @@ class FilesystemHook(Hook):
         # root
         if not name:
             name = node.anchor
-        inode = Inode(self.logger, self.gfs, node)
+        inode = Inode(self.gfs, node)
         # apply filters
         if self.filter_node(inode):
             self.context.trigger('filesystem_new_inode', gfs=self.gfs, inode=inode)
