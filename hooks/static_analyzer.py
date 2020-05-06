@@ -36,6 +36,7 @@ class checkPE:
 class StaticAnalyzerHook(Hook):
 
     VALID_MIME_APP = ['application/x-dosexec']
+    CATROOT_PATH = '/Windows/System32/CatRoot'
 
     def __init__(self, parameters):
         super().__init__(parameters)
@@ -93,10 +94,10 @@ class StaticAnalyzerHook(Hook):
                 input_stream.leave()
         return False
 
-    def has_catSignature(self, gfs: GuestFS, folder: str, pe_inode: Inode, sha1Hash: str, sha256Hash: str) -> bool:
-        if gfs.is_dir(folder):
-            for entry in gfs.ls(folder):
-                path_entry = folder + '/' + entry
+    def has_catSignature(self, gfs: GuestFS, filepath: str, pe_inode: Inode, sha1Hash: str, sha256Hash: str) -> bool:
+        if gfs.is_dir(filepath):
+            for entry in gfs.ls(filepath):
+                path_entry = filepath + '/' + entry
                 if gfs.is_dir(path_entry):
                     hasCatSig = self.has_catSignature(
                         gfs, path_entry, pe_inode, sha1Hash, sha256Hash
@@ -154,6 +155,7 @@ class StaticAnalyzerHook(Hook):
             # Authenticode checks (embedded and detached signatures)
             hasEmbeddedSig = pe.has_signature
 
+
             if self.catalogs:
                 hasCatSig = False
                 if not hasEmbeddedSig:
@@ -165,7 +167,7 @@ class StaticAnalyzerHook(Hook):
                         sha1Hash = hashes.get('sha1').hex().upper()
                         sha256Hash = hashes.get('sha256').hex().upper()
                         hasCatSig = self.has_catSignature(
-                            gfs, '/Windows/System32/CatRoot', inode,
+                            gfs, self.CATROOT_PATH, inode,
                             sha1Hash, sha256Hash)
             else:
                 hasCatSig = None
