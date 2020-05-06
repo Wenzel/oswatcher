@@ -365,7 +365,7 @@ class FilesystemHook(Hook):
         root = Path('/')
         if self.enumerate:
             self.logger.info('Enumerating entries')
-            self.walk_count(root)
+            self.total_entries = sum(1 for _ in self.gfs_wrapper.walk(root))
         self.logger.info('Capturing filesystem')
         self.time_last_update = time.time()
 
@@ -374,14 +374,6 @@ class FilesystemHook(Hook):
         # cleanup inode related resources
         root_inode.close()
         self.context.trigger('filesystem_capture_end', root=root_inode)
-
-    def walk_count(self, node):
-        self.total_entries += 1
-        if self.gfs.is_dir(str(node)):
-            entries = self.list_entries(node)
-            for entry in entries:
-                subnode_abs = node / entry
-                self.walk_count(subnode_abs)
 
     def walk_capture(self, node):
         self.counter += 1
