@@ -1,20 +1,17 @@
-# std
 import hashlib
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
-# third party
 import lief
-from see import Hook, Event
+from see import Event, Hook
 from signify.fingerprinter import AuthenticodeFingerprinter
 
-# local
-from .filesystem import GuestFSWrapper
+from hooks.filesystem import GuestFSWrapper
+from oswatcher.model import InodeType
 from oswatcher.utils import asn1
 from oswatcher.utils.asn1 import Decoder
-from oswatcher.model import InodeType
 
 
 @dataclass
