@@ -25,11 +25,9 @@ class PEChecksec:
     force_integrity: bool
     nx_compat: bool
     high_entropy_va: bool
-    num_functions_exported: int
     has_embedded_sig: bool
     has_cat_sig: bool
     cat_filename: str
-    imported_libs: list
 
 
 class StaticAnalyzerHook(Hook):
@@ -147,14 +145,8 @@ class StaticAnalyzerHook(Hook):
                             gfs_wrapper, self.CATROOT_PATH,
                             sha1_hash, sha256_hash)
 
-            # image implementation characteristics
-            num_functions_exported = len(pe.exported_functions)
-            imported_libs = []
-            for importedLib in pe.imports:
-                imported_libs.append(importedLib.name)
             check_pe = PEChecksec(dynamic_base, no_seh, guard_cf, force_integrity,
                                   nx_compat, high_entropy_va,
-                                  num_functions_exported,
                                   has_embedded_sig, has_cat_sig,
-                                  cat_filepath, imported_libs)
+                                  cat_filepath)
             self.logger.info(check_pe)
