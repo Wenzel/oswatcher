@@ -25,9 +25,8 @@ class PEChecksec:
     force_integrity: bool
     nx_compat: bool
     high_entropy_va: bool
-    has_embedded_sig: bool
-    has_cat_sig: bool
-    cat_filename: str
+    signed: bool    # whether the PE is signed or not. check cat_filepath to determine if embedded or catalog
+    cat_filepath: str   # if not empty, this PE is signed by this catalog file
 
 
 class StaticAnalyzerHook(Hook):
@@ -79,7 +78,7 @@ class StaticAnalyzerHook(Hook):
         return False
 
     def has_cat_signature(self, gfs_wrapper: GuestFSWrapper, filepath: str, sha1_hash: str, sha256_hash: str)\
-            -> (bool, Optional[str]):
+            -> Optional[str]:
         for cat_inode in gfs_wrapper.walk_inodes(Path(filepath)):
             if cat_inode.exists and cat_inode.inode_type == InodeType.REG:
                 self.logger.debug("Checking for cat signature on %s", cat_inode.path)
@@ -90,8 +89,8 @@ class StaticAnalyzerHook(Hook):
                     catalog_found = self.search_cat(decoder, sha1_hash, sha256_hash, 0)
                     self.logger.debug("Catalog found: %s", catalog_found)
                     if catalog_found:
-                        return True, cat_inode.str_path
-        return False, None
+                        return cat_inode.str_path
+        return None
 
     def handle_new_file(self, event: Event) -> None:
         # get inode parameter
@@ -129,11 +128,11 @@ class StaticAnalyzerHook(Hook):
 
             # Authenticode checks (embedded and detached signatures)
             has_embedded_sig = pe.has_signature
-
-            cat_filepath = None
-            has_cat_sig = None
-            if self.catalogs:
-                if not has_embedded_sig:
+            if not has_embedded_sig:
+                is_signed = False
+                cat_filepath = None
+                # check catalog
+                if self.catalogs:
                     with open(local_path, "rb") as pe_file_obj:
                         fingerprinter = AuthenticodeFingerprinter(pe_file_obj)
                         fingerprinter.add_authenticode_hashers(
@@ -141,12 +140,16 @@ class StaticAnalyzerHook(Hook):
                         hashes = (fingerprinter.hashes()).get('authentihash')
                         sha1_hash = hashes.get('sha1').hex().upper()
                         sha256_hash = hashes.get('sha256').hex().upper()
-                        has_cat_sig, cat_filepath = self.has_cat_signature(
+                        cat_filepath = self.has_cat_signature(
                             gfs_wrapper, self.CATROOT_PATH,
                             sha1_hash, sha256_hash)
+                        if cat_filepath is not None:
+                            is_signed = True
+            else:
+                # emebedded sig present
+                is_signed = True
+                cat_filepath = ''
 
             check_pe = PEChecksec(dynamic_base, no_seh, guard_cf, force_integrity,
-                                  nx_compat, high_entropy_va,
-                                  has_embedded_sig, has_cat_sig,
-                                  cat_filepath)
+                                  nx_compat, high_entropy_va, is_signed, str(cat_filepath))
             self.logger.info(check_pe)
