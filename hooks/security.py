@@ -66,7 +66,7 @@ class SecurityHook(Hook):
         else:
             os_id = self.context.domain.name()
         default_checksec_failed_dir = Path.cwd() / f"{os_id}_checksec_failed"
-        self.keep_binaries_dir = self.configuration.get('keep_failed_dir', default_checksec_failed_dir)
+        self.keep_binaries_dir = Path(self.configuration.get('keep_failed_dir', default_checksec_failed_dir))
 
         self.context.subscribe('detected_os_info', self.get_os_info)
         self.context.subscribe('filesystem_new_file', self.check_file)
@@ -82,6 +82,8 @@ class SecurityHook(Hook):
             # checksec only supports ELF files
             return
         mime = inode.file_magic_type
+        if not mime:
+            return
         filepath = inode.path
         if re.match(r'application/x(-pie)?-(executable|sharedlib)', mime):
             self.logger.info('Checking security of %s: %s', filepath, mime)
