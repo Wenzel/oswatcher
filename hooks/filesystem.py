@@ -1,25 +1,28 @@
-# sys
 import functools
+import logging
 import re
 import shutil
 import stat
 import time
 from collections import Counter
 from pathlib import Path
-from tempfile import NamedTemporaryFile
 
+import guestfs
 import magic
 from git import Repo
 from git.exc import GitCommandError
+from memory_tempfile import MemoryTempfile
 from see import Hook
 
-# 3rd
-import guestfs
-# local
 from oswatcher.model import GraphInode, InodeType, OSType
 from oswatcher.utils import get_hard_drive_path
 
 STATS = Counter()
+try:
+    TEMPFILE = MemoryTempfile(fallback=False)
+except RuntimeError:
+    logging.warning("Memory-based filesystem not available for temporary files. Fallback to disk-based")
+    TEMPFILE = MemoryTempfile(fallback=True)
 
 
 class Inode:
@@ -93,7 +96,7 @@ class Inode:
     @functools.lru_cache()
     def local_file(self):
         STATS['local_file'] += 1
-        self._tmp_local_file = NamedTemporaryFile()
+        self._tmp_local_file = TEMPFILE.NamedTemporaryFile()
         self._gfs.download(self.str_path, self._tmp_local_file.name)
         return self._tmp_local_file.name
 
