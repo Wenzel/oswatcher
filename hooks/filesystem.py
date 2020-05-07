@@ -50,6 +50,10 @@ class Inode:
             self._tmp_local_file.close()
 
     @property
+    def exists(self) -> bool:
+        return self._gfs.exists(self.str_path)
+
+    @property
     @functools.lru_cache()
     def str_path(self) -> str:
         return str(self.path)
