@@ -12,7 +12,7 @@ from signify.fingerprinter import AuthenticodeFingerprinter
 
 # local
 from .filesystem import GuestFSWrapper
-from oswatcher.utils import asn1
+from oswatcher.utils import asn1, format_size
 from oswatcher.utils.asn1 import Decoder
 from oswatcher.model import InodeType
 
@@ -57,19 +57,6 @@ class StaticAnalyzerHook(Hook):
         self.keep_binaries_dir = self.configuration.get('keep_failed_dir', default_checksec_failed_dir)
         # subscribe on "filesystem_new_file" events
         self.context.subscribe("filesystem_new_file", self.handle_new_file)
-
-    def format_size(self, size: int, precision: int = 2) -> str:
-        suffix = ['B', 'KB', 'MB', 'GB']
-        suffix_index = 0
-
-        if size == 0:
-            return "0"
-        else:
-            while size > 1024 and suffix_index < 3:
-                suffix_index += 1
-                size = size / 1024.0
-
-        return "%.*f%s" % (precision, size, suffix[suffix_index])
 
     def search_cat(self, input_stream: Decoder, sha1_hash: str, sha256_hash: str, spc_indirect_found: int) -> bool:
         while not input_stream.eof():
@@ -163,8 +150,8 @@ class StaticAnalyzerHook(Hook):
                             sha1_hash, sha256_hash)
 
             # image implementation characteristics
-            code_size = self.format_size(pe.optional_header.sizeof_code)
-            image_size = self.format_size(pe.optional_header.sizeof_image)
+            code_size = format_size(pe.optional_header.sizeof_code)
+            image_size = format_size(pe.optional_header.sizeof_image)
             num_functions_exported = len(pe.exported_functions)
             imported_libs = []
             for importedLib in pe.imports:
