@@ -157,8 +157,8 @@ class StaticAnalyzerHook(Hook):
             for importedLib in pe.imports:
                 imported_libs.append(importedLib.name)
             check_pe = PEChecksec(dynamic_base, no_seh, guard_cf, force_integrity,
-                               nx_compat, high_entropy_va, code_size,
-                               num_functions_exported, image_size,
-                               has_embedded_sig, has_cat_sig,
-                               cat_filepath, imported_libs)
+                                  nx_compat, high_entropy_va, code_size,
+                                  num_functions_exported, image_size,
+                                  has_embedded_sig, has_cat_sig,
+                                  cat_filepath, imported_libs)
             self.logger.info(check_pe)
