@@ -12,7 +12,7 @@ from signify.fingerprinter import AuthenticodeFingerprinter
 
 # local
 from .filesystem import GuestFSWrapper
-from oswatcher.utils import asn1, format_size
+from oswatcher.utils import asn1
 from oswatcher.utils.asn1 import Decoder
 from oswatcher.model import InodeType
 
@@ -25,9 +25,7 @@ class PEChecksec:
     force_integrity: bool
     nx_compat: bool
     high_entropy_va: bool
-    code_size: str
     num_functions_exported: int
-    image_size: str
     has_embedded_sig: bool
     has_cat_sig: bool
     cat_filename: str
@@ -150,15 +148,13 @@ class StaticAnalyzerHook(Hook):
                             sha1_hash, sha256_hash)
 
             # image implementation characteristics
-            code_size = format_size(pe.optional_header.sizeof_code)
-            image_size = format_size(pe.optional_header.sizeof_image)
             num_functions_exported = len(pe.exported_functions)
             imported_libs = []
             for importedLib in pe.imports:
                 imported_libs.append(importedLib.name)
             check_pe = PEChecksec(dynamic_base, no_seh, guard_cf, force_integrity,
-                                  nx_compat, high_entropy_va, code_size,
-                                  num_functions_exported, image_size,
+                                  nx_compat, high_entropy_va,
+                                  num_functions_exported,
                                   has_embedded_sig, has_cat_sig,
                                   cat_filepath, imported_libs)
             self.logger.info(check_pe)
