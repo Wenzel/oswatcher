@@ -123,7 +123,11 @@ def capture_main(args):
     # load hooks.json
     hooks_config = {}
     with open(hooks_config_path) as f:
-        hooks_config = json.load(f)
+        try:
+            hooks_config = json.load(f)
+        except json.JSONDecodeError:
+            logging.error("Failed to parse %s: Invalid JSON", hooks_config_path)
+            return
 
     if 'configuration' not in hooks_config:
         hooks_config['configuration'] = {}
