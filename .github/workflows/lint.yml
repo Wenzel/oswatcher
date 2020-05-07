@@ -19,23 +19,3 @@ jobs:
         # ignore W503: a bug flake8
         flake8 --show-source --statistics --max-line-length=127 --ignore=W503 oswatcher
         flake8 --show-source --statistics --max-line-length=127 --ignore=W503 hooks
-
-  isort:
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v2
-      # isort is very sensible to install dependencies order
-      # we should install it like our local environement
-    - name: Install oswatcher system dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -qq libguestfs-dev pkg-config libvirt-dev
-    - name: Set up Python 3.7
-      uses: actions/setup-python@v1
-      with:
-        python-version: '3.7'
-    - name: Lint with isort
-      run: |
-        pip install .
-        isort --check-only --recursive --diff oswatcher hooks
