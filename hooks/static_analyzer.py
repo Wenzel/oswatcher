@@ -3,17 +3,18 @@ import hashlib
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Optional
 
 # third party
 import lief
 from see import Hook, Event
 from signify.fingerprinter import AuthenticodeFingerprinter
-from guestfs import GuestFS
 
 # local
-from .filesystem import Inode
+from .filesystem import GuestFSWrapper
 from oswatcher.utils import asn1
 from oswatcher.utils.asn1 import Decoder
+from oswatcher.model import InodeType
 
 
 @dataclass
@@ -70,58 +71,49 @@ class StaticAnalyzerHook(Hook):
 
         return "%.*f%s" % (precision, size, suffix[suffixIndex])
 
-    def search_cat(self, input_stream: Decoder, sha1Hash: str, sha256Hash: str, spcIndirectFound: int) -> bool:
+    def search_cat(self, input_stream: Decoder, sha1_hash: str, sha256_hash: str, spc_indirect_found: int) -> bool:
         while not input_stream.eof():
             tag = input_stream.peek()
             if tag.typ == asn1.Types.Primitive:
                 tag, value = input_stream.read()
                 if tag.nr == asn1.Numbers.ObjectIdentifier:
                     if value == '1.3.6.1.4.1.311.2.1.4':
-                        spcIndirectFound = 1
+                        spc_indirect_found = 1
                 elif tag.nr == asn1.Numbers.OctetString:
-                    if spcIndirectFound == 1:
-                        spcIndirectFound = 0
+                    if spc_indirect_found == 1:
+                        spc_indirect_found = 0
                         imageHash = value.hex().upper()
-                        if (imageHash == sha256Hash or imageHash == sha1Hash):
+                        if imageHash == sha256_hash or imageHash == sha1_hash:
                             return True
             elif tag.typ == asn1.Types.Constructed:
                 input_stream.enter()
                 catalogFound = self.search_cat(
-                    input_stream, sha1Hash, sha256Hash, spcIndirectFound)
+                    input_stream, sha1_hash, sha256_hash, spc_indirect_found)
                 if catalogFound:
                     input_stream.leave()
                     return True
                 input_stream.leave()
         return False
 
-    def has_catSignature(self, gfs: GuestFS, filepath: str, pe_inode: Inode, sha1Hash: str, sha256Hash: str) -> bool:
-        if gfs.is_dir(filepath):
-            for entry in gfs.ls(filepath):
-                path_entry = filepath + '/' + entry
-                if gfs.is_dir(path_entry):
-                    hasCatSig = self.has_catSignature(
-                        gfs, path_entry, pe_inode, sha1Hash, sha256Hash
-                    )
-                    if hasCatSig:
-                        return True
-                else:
-                    cat_inode = Inode(gfs, Path(path_entry))
-                    with open(cat_inode.local_file, "rb") as cat_file_obj:
-                        cat_data = cat_file_obj.read()
-                        decoder = asn1.Decoder()
-                        decoder.start(cat_data)
-                        catalogFound = self.search_cat(
-                            decoder, sha1Hash, sha256Hash, 0)
-                        if catalogFound:
-                            self.catFileName = entry
-                            return True
-            return False
-        return False
+    def has_cat_signature(self, gfs_wrapper: GuestFSWrapper, filepath: str, sha1_hash: str, sha256_hash: str)\
+            -> (bool, Optional[str]):
+        for cat_inode in gfs_wrapper.walk_inodes(Path(filepath)):
+            if cat_inode.exists and cat_inode.inode_type == InodeType.REG:
+                self.logger.debug("Checking for cat signature on %s", cat_inode.path)
+                with open(cat_inode.local_file, "rb") as cat_file_obj:
+                    cat_data = cat_file_obj.read()
+                    decoder = asn1.Decoder()
+                    decoder.start(cat_data)
+                    catalog_found = self.search_cat(decoder, sha1_hash, sha256_hash, 0)
+                    self.logger.debug("Catalog found: %s", catalog_found)
+                    if catalog_found:
+                        return True, cat_inode.str_path
+        return False, None
 
     def handle_new_file(self, event: Event) -> None:
         # get inode parameter
         inode = event.inode
-        gfs = event.gfs
+        gfs_wrapper = event.gfs_wrapper
 
         # get mime type
         mime_type = inode.py_magic_type
@@ -155,9 +147,9 @@ class StaticAnalyzerHook(Hook):
             # Authenticode checks (embedded and detached signatures)
             hasEmbeddedSig = pe.has_signature
 
-
+            cat_filepath = None
+            has_cat_sig = None
             if self.catalogs:
-                hasCatSig = False
                 if not hasEmbeddedSig:
                     with open(local_path, "rb") as pe_file_obj:
                         fingerprinter = AuthenticodeFingerprinter(pe_file_obj)
@@ -166,12 +158,9 @@ class StaticAnalyzerHook(Hook):
                         hashes = (fingerprinter.hashes()).get('authentihash')
                         sha1Hash = hashes.get('sha1').hex().upper()
                         sha256Hash = hashes.get('sha256').hex().upper()
-                        hasCatSig = self.has_catSignature(
-                            gfs, self.CATROOT_PATH, inode,
+                        has_cat_sig, cat_filepath = self.has_cat_signature(
+                            gfs_wrapper, self.CATROOT_PATH,
                             sha1Hash, sha256Hash)
-            else:
-                hasCatSig = None
-                self.catFileName = None
 
             # image implementation characteristics
             codeSize = self.formatSize(pe.optional_header.sizeof_code)
@@ -183,6 +172,6 @@ class StaticAnalyzerHook(Hook):
             check_pe = checkPE(dynamicBase, noSEH, guardCF, forceIntegrity,
                                nxCompat, highEntropyVA, codeSize,
                                numFunctionsExported, imageSize,
-                               hasEmbeddedSig, hasCatSig,
-                               self.catFileName, importedLibs)
+                               hasEmbeddedSig, has_cat_sig,
+                               cat_filepath, importedLibs)
             self.logger.info(check_pe)
