@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import hashlib
 import shutil
 from dataclasses import dataclass
@@ -149,4 +151,5 @@ class StaticAnalyzerHook(Hook):
 
             check_pe = PEChecksec(dynamic_base, no_seh, guard_cf, force_integrity,
                                   nx_compat, high_entropy_va, is_signed, str(cat_filepath))
-            self.logger.info(check_pe)
+            self.logger.debug("PE properties: %s", check_pe)
+            self.context.trigger('checksec_pe', inode=inode, pe_checksec=check_pe)

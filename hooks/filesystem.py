@@ -1,24 +1,30 @@
+from __future__ import annotations
+
 import functools
 import logging
 import re
 import shutil
 import stat
 import time
+import typing
 from collections import Counter
 from pathlib import Path
-from typing import Any, Callable, Iterator, Optional
+from typing import Any, Callable, Dict, Iterator, Optional
 
 import guestfs
 import magic
 from git import Repo
 from git.exc import GitCommandError
-from guestfs import GuestFS
 from memory_tempfile import MemoryTempfile
 from see import Hook
 
-from hooks.security import ELFChecksec
 from oswatcher.model import GraphInode, InodeType, OSType
 from oswatcher.utils import get_hard_drive_path
+
+if typing.TYPE_CHECKING:
+    from guestfs import GuestFS
+    from hooks.security import ELFChecksec
+    from hooks.static_analyzer import PEChecksec
 
 STATS = Counter()
 try:
@@ -443,10 +449,10 @@ class Neo4jFilesystemHook(Hook):
             raise RuntimeError('Neo4j plugin selected but neo4j is disabled in configuration')
         self.graph = self.configuration['neo4j']['graph']
         self.os_node = self.configuration['neo4j']['OS']
-        self.root_g_inode = None
+        self.root_g_inode: GraphInode = None
         self.tx = None
         self.os_info = None
-        self.fs = {}
+        self.fs: Dict[str, GraphInode] = {}
         self.context.subscribe('detected_os_info', self.get_os_info)
         self.context.subscribe('filesystem_capture_begin', self.fs_capture_begin)
         self.context.subscribe('filesystem_capture_end', self.fs_capture_end)
@@ -454,6 +460,7 @@ class Neo4jFilesystemHook(Hook):
         self.context.subscribe('filesystem_new_child_inode', self.process_new_child)
         self.context.subscribe('filesystem_end_inode', self.process_end_inode)
         self.context.subscribe('checksec_elf', self.process_checksec_elf)
+        self.context.subscribe('checksec_pe', self.process_checksec_pe)
 
     def get_os_info(self, event):
         """SEE signal handler to simply retrieve the os_info"""
@@ -513,6 +520,19 @@ class Neo4jFilesystemHook(Hook):
         self.fs[str(inode.path)].fortify_source = elfsec.fortify_source
         self.fs[str(inode.path)].fortified = elfsec.fortified
         self.fs[str(inode.path)].fortifyable = elfsec.fortifyable
+
+    def process_checksec_pe(self, event):
+        inode: Inode = event.inode
+        pesec: PEChecksec = event.pe_checksec
+        self.fs[inode.str_path].checksec = True
+        self.fs[inode.str_path].dynamic_base = pesec.dynamic_base
+        self.fs[inode.str_path].no_seh = pesec.no_seh
+        self.fs[inode.str_path].guard_cf = pesec.guard_cf
+        self.fs[inode.str_path].force_integrity = pesec.force_integrity
+        self.fs[inode.str_path].nx_compat = pesec.nx_compat
+        self.fs[inode.str_path].high_entropy_va = pesec.high_entropy_va
+        self.fs[inode.str_path].signed = pesec.signed
+        self.fs[inode.str_path].cat_filepath = pesec.cat_filepath
 
 
 class GitFilesystemHook(Hook):
