@@ -149,7 +149,7 @@ To visualize the filesystem in `Neo4j`, include the `FilesystemHook` and the `Ne
 {
     "configuration":
     {
-        "neo4j_db": {
+        "neo4j": {
             "enabled": true,
             "delete": false,
             "replace": false
