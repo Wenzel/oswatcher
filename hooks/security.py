@@ -15,7 +15,7 @@ from oswatcher.model import OSType
 
 
 @dataclass
-class ChecksecFile:
+class ELFChecksec:
     relro: str
     canary: bool
     nx: bool
@@ -137,10 +137,10 @@ class SecurityHook(Hook):
                         shutil.copy(inode.local_file, dst)
                     return
 
-            checksec_file = ChecksecFile(relro, canary, nx, pie, rpath, runpath,
-                                         symbols, fortify_source, fortified, fortifyable)
-            self.logger.debug("Properties: %s", checksec_file)
-            self.context.trigger('security_checksec_bin', inode=inode, checksec_file=checksec_file)
+            elfsec = ELFChecksec(relro, canary, nx, pie, rpath, runpath,
+                                 symbols, fortify_source, fortified, fortifyable)
+            self.logger.debug("Properties: %s", elfsec)
+            self.context.trigger('checksec_elf', inode=inode, elf_checksec=elfsec)
         else:
             # log mime for debugging
             self.logger.debug("Discard security analysis of %s: wrong mime type: %s", filepath, mime)

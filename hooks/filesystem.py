@@ -16,6 +16,7 @@ from guestfs import GuestFS
 from memory_tempfile import MemoryTempfile
 from see import Hook
 
+from hooks.security import ELFChecksec
 from oswatcher.model import GraphInode, InodeType, OSType
 from oswatcher.utils import get_hard_drive_path
 
@@ -452,7 +453,7 @@ class Neo4jFilesystemHook(Hook):
         self.context.subscribe('filesystem_new_inode', self.process_new_inode)
         self.context.subscribe('filesystem_new_child_inode', self.process_new_child)
         self.context.subscribe('filesystem_end_inode', self.process_end_inode)
-        self.context.subscribe('security_checksec_bin', self.process_checksec_file)
+        self.context.subscribe('checksec_elf', self.process_checksec_elf)
 
     def get_os_info(self, event):
         """SEE signal handler to simply retrieve the os_info"""
@@ -498,20 +499,20 @@ class Neo4jFilesystemHook(Hook):
         # insert into Neo4j transaction
         self.tx.create(g_inode)
 
-    def process_checksec_file(self, event):
-        inode = event.inode
-        checksec_file = event.checksec_file
+    def process_checksec_elf(self, event):
+        inode: Inode = event.inode
+        elfsec: ELFChecksec = event.elf_checksec
         self.fs[str(inode.path)].checksec = True
-        self.fs[str(inode.path)].relro = checksec_file.relro
-        self.fs[str(inode.path)].canary = checksec_file.canary
-        self.fs[str(inode.path)].nx = checksec_file.nx
-        self.fs[str(inode.path)].pie = checksec_file.pie
-        self.fs[str(inode.path)].rpath = checksec_file.rpath
-        self.fs[str(inode.path)].runpath = checksec_file.runpath
-        self.fs[str(inode.path)].symbols = checksec_file.symbols
-        self.fs[str(inode.path)].fortify_source = checksec_file.fortify_source
-        self.fs[str(inode.path)].fortified = checksec_file.fortified
-        self.fs[str(inode.path)].fortifyable = checksec_file.fortifyable
+        self.fs[str(inode.path)].relro = elfsec.relro
+        self.fs[str(inode.path)].canary = elfsec.canary
+        self.fs[str(inode.path)].nx = elfsec.nx
+        self.fs[str(inode.path)].pie = elfsec.pie
+        self.fs[str(inode.path)].rpath = elfsec.rpath
+        self.fs[str(inode.path)].runpath = elfsec.runpath
+        self.fs[str(inode.path)].symbols = elfsec.symbols
+        self.fs[str(inode.path)].fortify_source = elfsec.fortify_source
+        self.fs[str(inode.path)].fortified = elfsec.fortified
+        self.fs[str(inode.path)].fortifyable = elfsec.fortifyable
 
 
 class GitFilesystemHook(Hook):
