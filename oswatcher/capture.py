@@ -1,4 +1,3 @@
-# sys
 import json
 import logging
 import os
@@ -9,13 +8,11 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile, TemporaryDirectory, gettempdir
 from timeit import default_timer as timer
 
-# 3rd
 import libvirt
 from py2neo import Graph
 from see import Environment
 from see.context import QEMUContextFactory
 
-# local
 from oswatcher.model import OS
 from oswatcher.utils import get_hard_drive_path
 
@@ -132,14 +129,20 @@ def capture_main(args):
     if 'configuration' not in hooks_config:
         hooks_config['configuration'] = {}
 
+    # use default desktop ready delay if unset
+    if "desktop_ready_delay" not in hooks_config['configuration']:
+        hooks_config['configuration']['desktop_ready_delay'] = DESKTOP_READY_DELAY
+
+    # insert vm_name object
+    hooks_config['configuration']['domain_name'] = vm_name
+    # insert debug flag
+    hooks_config['configuration']['debug'] = debug
+
     # Neo4j required ?
     neo4j = hooks_config['configuration'].get('neo4j', {})
     if neo4j.get('enabled'):
         logging.info('Connect to Neo4j DB')
         graph = Graph(password=DB_PASSWORD)
-        hooks_config['configuration']['neo4j'] = {}
-        # insert graph object into general hook configuration
-        hooks_config['configuration']['neo4j']['graph'] = graph
         # handle 'delete' key
         # delete entire graph ?
         delete = neo4j.get('delete')
@@ -157,38 +160,39 @@ def capture_main(args):
             # replace = True and an OS already exists
             logging.info('Deleting previous OS %s', vm_name)
             graph.run(SUBGRAPH_DELETE_OS.format(vm_name))
+
         # init new OS node
         os_node = OS(vm_name)
         # create it already, so transactions will work in hooks
         logging.info('Creating OS node %s', os_node.name)
         graph.create(os_node)
-        # make it available to all hooks via general configuration
-        hooks_config['configuration']['neo4j']['OS'] = os_node
-
-    # use default desktop ready delay if unset
-    if "desktop_ready_delay" not in hooks_config['configuration']:
-        hooks_config['configuration']['desktop_ready_delay'] = DESKTOP_READY_DELAY
-
-    # insert vm_name object
-    hooks_config['configuration']['domain_name'] = vm_name
-    # insert debug flag
-    hooks_config['configuration']['debug'] = debug
+        neo4j['OS'] = os_node
+        neo4j['graph'] = graph
 
     # Run the protocol
-    with QEMUDomainContextFactory(vm_name, uri) as context:
-        with Environment(context, hooks_config) as environment:
-            logging.info('Capturing %s', vm_name)
-            start = timer()
-            protocol(environment)
-            end = timer()
-            delta = timedelta(seconds=end - start)
-            # remove microseconds
-            duration = str(delta).split('.')[0]
-            logging.info('Capture duration: %s', duration)
+    try:
+        with QEMUDomainContextFactory(vm_name, uri) as context:
+            with Environment(context, hooks_config) as environment:
+                logging.info('Capturing %s', vm_name)
+                start = timer()
+                protocol(environment)
+                end = timer()
+                delta = timedelta(seconds=end - start)
+                # remove microseconds
+                duration = str(delta).split('.')[0]
+                logging.info('Capture duration: %s', duration)
+    except KeyboardInterrupt:
+        # cleanup
+        if neo4j.get('enabled'):
+            logging.warning("SIGINT received")
+            logging.info("cleanup: removing OS node")
+            graph: Graph = neo4j.get('graph', None)
+            os_node: OS = neo4j.get('OS', None)
+            if graph is not None and os_node is not None:
+                graph.run(SUBGRAPH_DELETE_OS.format(vm_name))
 
-    # finalise db insertion
     if neo4j.get('enabled'):
         # push OS node updates
-        graph = hooks_config['configuration']['neo4j']['graph']
-        os_node = hooks_config['configuration']['neo4j']['OS']
+        os_node: OS = neo4j['OS']
+        graph: Graph = neo4j['graph']
         graph.push(os_node)

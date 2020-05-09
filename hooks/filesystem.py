@@ -12,6 +12,7 @@ import guestfs
 import magic
 from git import Repo
 from git.exc import GitCommandError
+from guestfs import GuestFS
 from memory_tempfile import MemoryTempfile
 from see import Hook
 
@@ -151,7 +152,7 @@ class LibguestfsHook(Hook):
 
     def __init__(self, parameters):
         super().__init__(parameters)
-        self.gfs = None
+        self.gfs: Optional[GuestFS] = None
         self.os_type = None
         self.neo4j = self.configuration.get('neo4j', False)
         self.os_node = None
@@ -207,8 +208,12 @@ class LibguestfsHook(Hook):
     def cleanup(self):
         # shutdown
         self.logger.debug('shutdown libguestfs')
-        self.gfs.umount_all()
-        self.gfs.shutdown()
+        try:
+            self.gfs.umount_all()
+            self.gfs.shutdown()
+        except RuntimeError:
+            # not launched
+            pass
 
 
 class FilesystemHook(Hook):
