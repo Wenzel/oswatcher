@@ -1,12 +1,15 @@
+from __future__ import annotations
+
 import functools
 import logging
 import re
 import shutil
 import stat
 import time
+import typing
 from collections import Counter
 from pathlib import Path
-from typing import Optional
+from typing import Any, Callable, Dict, Iterator, Optional
 
 import guestfs
 import magic
@@ -19,6 +22,11 @@ from see import Hook
 from oswatcher.model import GraphInode, InodeType, OSType
 from oswatcher.utils import get_hard_drive_path
 
+if typing.TYPE_CHECKING:
+    from guestfs import GuestFS
+    from hooks.security import ELFChecksec
+    from hooks.static_analyzer import PEChecksec
+
 STATS = Counter()
 try:
     TEMPFILE = MemoryTempfile(fallback=False)
@@ -29,8 +37,8 @@ except RuntimeError:
 
 class Inode:
 
-    def __init__(self, logger, gfs, node):
-        self._logger = logger
+    def __init__(self, gfs, node):
+        self._logger = logging.getLogger(self.__class__.__name__)
         self._gfs = gfs
         self._tmp_local_file = None
         # public attributes
@@ -48,6 +56,10 @@ class Inode:
     def close(self):
         if self._tmp_local_file:
             self._tmp_local_file.close()
+
+    @property
+    def exists(self) -> bool:
+        return self._gfs.exists(self.str_path)
 
     @property
     @functools.lru_cache()
@@ -148,6 +160,48 @@ class Inode:
         return magic.from_file(self.local_file, mime=True)
 
 
+class GuestFSWrapper:
+    """
+    A wrapper around the libguestfs instance GuestFS object
+    which provides helpers to easily walk through the filesystem
+    """
+    def __init__(self, guestfs_instance: GuestFS):
+        self._gfs = guestfs_instance
+        self.logger = logging.getLogger(self.__class__.__name__)
+
+    def walk(self, node: Path, func: Callable[[Path], Any] = None) -> Iterator[Any]:
+        """
+        walks the filesystem at the given path, yield the return value of the given function
+        :param node: the guest Path from which to start walking
+        :param func: a lambda function whose return value will be yielded. If not specified, the yielded value
+                    will be the current guest filepath
+        :return: and iterator a values returned by the specified lambda function
+        """
+        if not func:
+            yield node
+        else:
+            yield func(node)
+        if self._gfs.is_dir(str(node)):
+            for entry in self.list_entries(str(node)):
+                subnode_abs = node / entry
+                yield from self.walk(subnode_abs, func)
+
+    def walk_inodes(self, node: Path) -> Iterator[Inode]:
+        yield from self.walk(node, lambda cur_node: Inode(self._gfs, cur_node))
+
+    def list_entries(self, folder: str) -> Iterator[str]:
+        # assume that node is a directory
+        # workaround bugs in libguestfs
+        try:
+            yield from self._gfs.ls(str(folder))
+        except UnicodeDecodeError as e:
+            # reported: https://bugzilla.redhat.com/show_bug.cgi?id=1778962
+            self.logger.warning("libguestfs failed to list entries of %s directory: %s", str(folder), str(e))
+        except RuntimeError as e:
+            # TODO: report bug
+            self.logger.warning("libguestfs failed to list entries of %s directory: %s", str(folder), str(e))
+
+
 class LibguestfsHook(Hook):
 
     def __init__(self, parameters):
@@ -244,6 +298,7 @@ class FilesystemHook(Hook):
         self.filter_exclude = self.configuration.get('filter_exclude')
 
         self.gfs = None
+        self.gfs_wrapper = None
         self.tx = None
         self.counter = 0
         self.total_entries = 0
@@ -318,6 +373,7 @@ class FilesystemHook(Hook):
     def get_guestfs_instance(self, event):
         """SEE signal handler to simply retrieve the libguestfs instance"""
         self.gfs = event.gfs
+        self.gfs_wrapper = GuestFSWrapper(self.gfs)
 
     def capture_fs(self, event):
         if self.gfs is None:
@@ -325,7 +381,7 @@ class FilesystemHook(Hook):
         root = Path('/')
         if self.enumerate:
             self.logger.info('Enumerating entries')
-            self.walk_count(root)
+            self.total_entries = sum(1 for _ in self.gfs_wrapper.walk(root))
         self.logger.info('Capturing filesystem')
         self.time_last_update = time.time()
 
@@ -334,14 +390,6 @@ class FilesystemHook(Hook):
         # cleanup inode related resources
         root_inode.close()
         self.context.trigger('filesystem_capture_end', root=root_inode)
-
-    def walk_count(self, node):
-        self.total_entries += 1
-        if self.gfs.is_dir(str(node)):
-            entries = self.list_entries(node)
-            for entry in entries:
-                subnode_abs = node / entry
-                self.walk_count(subnode_abs)
 
     def walk_capture(self, node):
         self.counter += 1
@@ -354,15 +402,15 @@ class FilesystemHook(Hook):
         # root
         if not name:
             name = node.anchor
-        inode = Inode(self.logger, self.gfs, node)
+        inode = Inode(self.gfs, node)
         # apply filters
         if self.filter_node(inode):
-            self.context.trigger('filesystem_new_inode', gfs=self.gfs, inode=inode)
+            self.context.trigger('filesystem_new_inode', gfs=self.gfs, inode=inode, gfs_wrapper=self.gfs_wrapper)
         # download and execute trigger on local file, if not filtered
         if inode.inode_type == InodeType.REG:
             # apply filters
             if self.filter_node(inode):
-                self.context.trigger('filesystem_new_file', gfs=self.gfs, inode=inode)
+                self.context.trigger('filesystem_new_file', gfs=self.gfs, inode=inode, gfs_wrapper=self.gfs_wrapper)
         # walk
         if self.gfs.is_dir(str(node)):
             entries = self.list_entries(node)
@@ -371,13 +419,14 @@ class FilesystemHook(Hook):
                 child_inode = self.walk_capture(subnode_abs)
                 # apply filters
                 if self.filter_node(inode):
-                    self.context.trigger('filesystem_new_child_inode', gfs=self.gfs, inode=inode, child=child_inode)
+                    self.context.trigger('filesystem_new_child_inode', gfs=self.gfs, inode=inode, child=child_inode,
+                                         gfs_wrapper=self.gfs_wrapper)
                 # cleanup inode related resources
                 child_inode.close()
 
         # apply filters
         if self.filter_node(inode):
-            self.context.trigger('filesystem_end_inode', gfs=self.gfs, inode=inode)
+            self.context.trigger('filesystem_end_inode', gfs=self.gfs, inode=inode, gfs_wrapper=self.gfs_wrapper)
         return inode
 
     def update_log(self, node):
@@ -405,17 +454,18 @@ class Neo4jFilesystemHook(Hook):
             raise RuntimeError('Neo4j plugin selected but neo4j is disabled in configuration')
         self.graph = self.configuration['neo4j']['graph']
         self.os_node = self.configuration['neo4j']['OS']
-        self.root_g_inode = None
+        self.root_g_inode: GraphInode = None
         self.tx = None
         self.os_info = None
-        self.fs = {}
+        self.fs: Dict[str, GraphInode] = {}
         self.context.subscribe('detected_os_info', self.get_os_info)
         self.context.subscribe('filesystem_capture_begin', self.fs_capture_begin)
         self.context.subscribe('filesystem_capture_end', self.fs_capture_end)
         self.context.subscribe('filesystem_new_inode', self.process_new_inode)
         self.context.subscribe('filesystem_new_child_inode', self.process_new_child)
         self.context.subscribe('filesystem_end_inode', self.process_end_inode)
-        self.context.subscribe('security_checksec_bin', self.process_checksec_file)
+        self.context.subscribe('checksec_elf', self.process_checksec_elf)
+        self.context.subscribe('checksec_pe', self.process_checksec_pe)
 
     def get_os_info(self, event):
         """SEE signal handler to simply retrieve the os_info"""
@@ -461,20 +511,33 @@ class Neo4jFilesystemHook(Hook):
         # insert into Neo4j transaction
         self.tx.create(g_inode)
 
-    def process_checksec_file(self, event):
-        inode = event.inode
-        checksec_file = event.checksec_file
+    def process_checksec_elf(self, event):
+        inode: Inode = event.inode
+        elfsec: ELFChecksec = event.elf_checksec
         self.fs[str(inode.path)].checksec = True
-        self.fs[str(inode.path)].relro = checksec_file.relro
-        self.fs[str(inode.path)].canary = checksec_file.canary
-        self.fs[str(inode.path)].nx = checksec_file.nx
-        self.fs[str(inode.path)].pie = checksec_file.pie
-        self.fs[str(inode.path)].rpath = checksec_file.rpath
-        self.fs[str(inode.path)].runpath = checksec_file.runpath
-        self.fs[str(inode.path)].symbols = checksec_file.symbols
-        self.fs[str(inode.path)].fortify_source = checksec_file.fortify_source
-        self.fs[str(inode.path)].fortified = checksec_file.fortified
-        self.fs[str(inode.path)].fortifyable = checksec_file.fortifyable
+        self.fs[str(inode.path)].relro = elfsec.relro
+        self.fs[str(inode.path)].canary = elfsec.canary
+        self.fs[str(inode.path)].nx = elfsec.nx
+        self.fs[str(inode.path)].pie = elfsec.pie
+        self.fs[str(inode.path)].rpath = elfsec.rpath
+        self.fs[str(inode.path)].runpath = elfsec.runpath
+        self.fs[str(inode.path)].symbols = elfsec.symbols
+        self.fs[str(inode.path)].fortify_source = elfsec.fortify_source
+        self.fs[str(inode.path)].fortified = elfsec.fortified
+        self.fs[str(inode.path)].fortifyable = elfsec.fortifyable
+
+    def process_checksec_pe(self, event):
+        inode: Inode = event.inode
+        pesec: PEChecksec = event.pe_checksec
+        self.fs[inode.str_path].checksec = True
+        self.fs[inode.str_path].dynamic_base = pesec.dynamic_base
+        self.fs[inode.str_path].no_seh = pesec.no_seh
+        self.fs[inode.str_path].guard_cf = pesec.guard_cf
+        self.fs[inode.str_path].force_integrity = pesec.force_integrity
+        self.fs[inode.str_path].nx_compat = pesec.nx_compat
+        self.fs[inode.str_path].high_entropy_va = pesec.high_entropy_va
+        self.fs[inode.str_path].signed = pesec.signed
+        self.fs[inode.str_path].cat_filepath = pesec.cat_filepath
 
 
 class GitFilesystemHook(Hook):

@@ -57,6 +57,7 @@ class GraphInode(GraphObject):
     file_type = Property()
     mime_type = Property()
     checksec = Property()
+    # ELF security
     relro = Property()
     canary = Property()
     nx = Property()
@@ -67,6 +68,15 @@ class GraphInode(GraphObject):
     fortify_source = Property()
     fortified = Property()
     fortifyable = Property()
+    # PE security
+    dynamic_base = Property()
+    no_seh = Property()
+    guard_cf = Property()
+    force_integrity = Property()
+    nx_compat = Property()
+    high_entropy_va = Property()
+    signed = Property()
+    cat_filepath = Property()
 
     # relationships
     children = RelatedTo("GraphInode", "HAS_CHILD")
