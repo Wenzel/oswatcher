@@ -15,7 +15,6 @@ import guestfs
 import magic
 from git import Repo
 from git.exc import GitCommandError
-from guestfs import GuestFS
 from memory_tempfile import MemoryTempfile
 from see import Hook
 
